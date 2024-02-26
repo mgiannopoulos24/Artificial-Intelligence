@@ -87,7 +87,6 @@ def depthFirstSearch(problem: SearchProblem):
     print("Start's successors:", problem.getSuccessors(problem.getStartState()))
     """
     "*** YOUR CODE HERE ***"
-    
     currPath = []           # The path that is popped from the frontier in each loop
     currState =  problem.getStartState()
 
@@ -111,11 +110,9 @@ def depthFirstSearch(problem: SearchProblem):
 
     return []       # If this point is reached, a solution could not be found.
 
-
 def breadthFirstSearch(problem: SearchProblem):
     """Search the shallowest nodes in the search tree first."""
     "*** YOUR CODE HERE ***"
-    
     currPath = []           # The path that is popped from the frontier in each loop
     currState =  problem.getStartState()    # The state(position) that is popped for the frontier in each loop
 
@@ -126,25 +123,21 @@ def breadthFirstSearch(problem: SearchProblem):
     frontier.push( (currState, currPath) )     # Insert just the start state, in order to pop it first
     explored = set()
     while not frontier.isEmpty():
-        currState, currPath = frontier.pop()    # Popping a state and the corresponding path
-        # To pass autograder.py question2:
+        currState, currPath = frontier.pop()    
         if problem.isGoalState(currState):
             return currPath
         explored.add(currState)
         frontierStates = [ t[0] for t in frontier.list ]
         for s in problem.getSuccessors(currState):
             if s[0] not in explored and s[0] not in frontierStates:
-                # Lecture code:
-                # if problem.isGoalState(s[0]):
-                #     return currPath + [s[1]]
-                frontier.push( (s[0], currPath + [s[1]]) )      # Adding the successor and its path to the frontier
+                frontier.push( (s[0], currPath + [s[1]]) )     
 
-    return []       # If this point is reached, a solution could not be found.
+    return []       # If this point is reached, a solution could not be found
+
 
 def uniformCostSearch(problem: SearchProblem):
     """Search the node of least total cost first."""
     "*** YOUR CODE HERE ***"
-    
     currPath = []           # The path that is popped from the frontier in each loop
     currState = problem.getStartState()     # The state(position) that is popped for the frontier in each loop
     frontier = util.PriorityQueue()
@@ -180,7 +173,6 @@ def uniformCostSearch(problem: SearchProblem):
 
     return []       # If this point is reached, a solution could not be found.
 
-
 def nullHeuristic(state, problem=None):
     """
     A heuristic function estimates the cost from the current state to the nearest
@@ -191,8 +183,6 @@ def nullHeuristic(state, problem=None):
 def aStarSearch(problem: SearchProblem, heuristic=nullHeuristic):
     """Search the node that has the lowest combined cost and heuristic first."""
     "*** YOUR CODE HERE ***"
-    
-    
     frontier = util.PriorityQueue()
     have_visited = set()
 
@@ -234,6 +224,9 @@ def aStarSearch(problem: SearchProblem, heuristic=nullHeuristic):
     
     # Solution/Path does not exist
     return None
+    
+
+
 # Abbreviations
 bfs = breadthFirstSearch
 dfs = depthFirstSearch
