@@ -88,6 +88,7 @@ def joinFactors(factors: List[Factor]):
     Factor.conditionedVariables
     Factor.variableDomainsDict
     """
+    factors = list(factors)
 
     # typecheck portion
     setsOfUnconditioned = [set(factor.unconditionedVariables()) for factor in factors]
@@ -103,6 +104,29 @@ def joinFactors(factors: List[Factor]):
 
 
     "*** YOUR CODE HERE ***"
+    # Calculate the set of unconditioned variables and conditioned variables for the join
+    unconditionedVars = set(functools.reduce(set.union, setsOfUnconditioned))
+    setsOfConditioned = [set(factor.conditionedVariables()) for factor in factors]
+    allConditionedVars = set(functools.reduce(set.union, setsOfConditioned))
+    conditionedVars = allConditionedVars - unconditionedVars
+
+    # Assuming all factors have the same variableDomainsDict
+    variableDomainsDict = factors[0].variableDomainsDict()
+
+    # Create the new factor
+    newFactor = Factor(unconditionedVars, conditionedVars, variableDomainsDict)
+
+    # Calculate probabilities for the new factor
+    for assignment in newFactor.getAllPossibleAssignmentDicts():
+        probability = 1.0
+        for factor in factors:
+            # Multiply probabilities from all factors that contain variables from the assignment
+            relevantVars = set(factor.variableDomainsDict().keys())
+            if relevantVars & set(assignment.keys()):
+                probability *= factor.getProbability(assignment)
+        newFactor.setProbability(assignment, probability)
+
+    return newFactor
     "*** END YOUR CODE HERE ***"
 
 ########### ########### ###########
