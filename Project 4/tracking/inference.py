@@ -20,7 +20,7 @@ import game
 import bayesNet as bn
 from bayesNet import normalize
 import hunters
-from util import manhattanDistance, raiseNotDefined
+from util import manhattanDistance, raiseNotDefined, Counter,sample
 from factorOperations import joinFactorsByVariableWithCallTracking, joinFactors
 from factorOperations import eliminateWithCallTracking
 
@@ -185,17 +185,16 @@ def inferenceByVariableEliminationWithCallTracking(callTrackingList=None):
         joinFactorsByVariable
         joinFactors
         """
-    
+        
         # this is for autograding -- don't modify
         joinFactorsByVariable = joinFactorsByVariableWithCallTracking(callTrackingList)
-        eliminate             = eliminateWithCallTracking(callTrackingList)
-        if eliminationOrder is None: # set an arbitrary elimination order if None given
-            eliminationVariables = bayesNet.variablesSet() - set(queryVariables) -\
-                                   set(evidenceDict.keys())
+        eliminate = eliminateWithCallTracking(callTrackingList)
+        
+        if eliminationOrder is None:
+            eliminationVariables = bayesNet.variablesSet() - set(queryVariables) - set(evidenceDict.keys())
             eliminationOrder = sorted(list(eliminationVariables))
-
+            
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
         "*** END YOUR CODE HERE ***"
 
 
@@ -336,7 +335,11 @@ class DiscreteDistribution(dict):
         {}
         """
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        total_value = self.total()
+        if total_value == 0:
+            return
+        for key in self.keys():
+            self[key] /= total_value
         "*** END YOUR CODE HERE ***"
 
     def sample(self):
@@ -361,7 +364,25 @@ class DiscreteDistribution(dict):
         0.0
         """
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        if len(self) == 0:
+            return None
+        
+        cumulative_distribution = []
+        cumulative_sum = 0
+        for key, value in self.items():
+            cumulative_sum += value
+            cumulative_distribution.append((cumulative_sum, key))
+        
+        # Generate a random number between 0 and the total sum of the distribution
+        rand = random.uniform(0, cumulative_distribution[-1][0])
+        
+        # Find the first key for which the cumulative sum is greater than or equal to the random number
+        for cumulative_value, key in cumulative_distribution:
+            if rand <= cumulative_value:
+                return key
+        # In theory, we should never get here because the random number should always be less than
+        # or equal to the total sum of the distribution
+        return None
         "*** END YOUR CODE HERE ***"
 
 
@@ -436,7 +457,19 @@ class InferenceModule:
         Return the probability P(noisyDistance | pacmanPosition, ghostPosition).
         """
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+         # Check the special case where the ghost is in jail.
+        if ghostPosition == jailPosition:
+            # If the observation is None and the ghost is in jail, return 1.
+            # Otherwise, return 0 because the distance sensor should deterministically return None.
+            return 1 if noisyDistance is None else 0
+        # If the sensor reads None for the distance, but the ghost is not in jail, the probability is 0.
+        if noisyDistance is None:
+            return 0
+        # Calculate the true distance between Pacman and the ghost using Manhattan distance.
+        trueDistance = manhattanDistance(pacmanPosition, ghostPosition)
+
+        # Use the given function to get the probability of noisyDistance given the trueDistance.
+        return busters.getObservationProbability(noisyDistance, trueDistance)
         "*** END YOUR CODE HERE ***"
 
     def setGhostPosition(self, gameState, ghostPosition, index):
@@ -550,8 +583,23 @@ class ExactInference(InferenceModule):
         position is known.
         """
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        pacmanPosition = gameState.getPacmanPosition()
+        jailPosition = self.getJailPosition()
+
+        # A temporary dictionary to hold the updated beliefs
+        updatedBeliefs = DiscreteDistribution()
+        
+        for ghostPosition in self.allPositions:
+            # If the ghost is in jail, the belief is set to 0 since we have a deterministic observation of None
+            if ghostPosition == jailPosition and observation is not None:
+                updatedBeliefs[ghostPosition] = 0
+            else:
+                # Get the probability of the observation given the distance to the ghost
+                probObservation = self.getObservationProb(observation, pacmanPosition, ghostPosition, jailPosition)
+                # Update the belief for the ghostPosition with the product of the prior belief and the probability of the observation
+                updatedBeliefs[ghostPosition] = probObservation * self.beliefs[ghostPosition]
         "*** END YOUR CODE HERE ***"
+        self.beliefs = updatedBeliefs
         self.beliefs.normalize()
     
     ########### ########### ###########
@@ -568,7 +616,22 @@ class ExactInference(InferenceModule):
         current position is known.
         """
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        # Create a new distribution that will hold the updated beliefs
+        newBeliefs = DiscreteDistribution()
+        
+        # Iterate over all possible previous ghost positions
+        for oldPos in self.allPositions:
+            # Get the transition model for the old position given the current game state
+            newPosDist = self.getPositionDistribution(gameState, oldPos)
+        
+            # Iterate over all possible new positions and update their beliefs
+            for newPos, prob in newPosDist.items():
+                # The new belief is the old belief times the transition probability
+                newBeliefs[newPos] += self.beliefs[oldPos] * prob
+
+        # Update the beliefs with the new distribution
+        self.beliefs = newBeliefs
+        self.beliefs.normalize()
         "*** END YOUR CODE HERE ***"
 
     def getBeliefDistribution(self):
@@ -600,7 +663,10 @@ class ParticleFilter(InferenceModule):
         """
         self.particles = []
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        self.particles = []
+        for i in range(self.numParticles):
+            position = self.legalPositions[i % len(self.legalPositions)]
+            self.particles.append(position)
         "*** END YOUR CODE HERE ***"
 
     def getBeliefDistribution(self):
@@ -612,7 +678,11 @@ class ParticleFilter(InferenceModule):
         This function should return a normalized distribution.
         """
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        beliefDistribution = Counter() ## There was a problem here, I couldnt use util.Counter so I imported from util the Counter
+        for particle in self.particles:
+            beliefDistribution[particle] += 1
+        beliefDistribution.normalize()
+        return beliefDistribution
         "*** END YOUR CODE HERE ***"
     
     ########### ########### ###########
@@ -632,7 +702,24 @@ class ParticleFilter(InferenceModule):
         the DiscreteDistribution may be useful.
         """
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        pacmanPosition = gameState.getPacmanPosition()
+        jailPosition = self.getJailPosition()
+        weights = Counter()
+        
+        for particle in self.particles:
+        # Get the probability of the observation given Pacman's position,
+        # the particle's position, and the jail position.
+            distanceProb = self.getObservationProb(observation, pacmanPosition, particle, jailPosition)
+            weights[particle] += distanceProb
+        # Check if all particles have zero weight and reinitialize if needed
+        if sum(weights.values()) == 0:
+            self.initializeUniformly(gameState)
+        else:
+            weights.normalize()
+            newParticles = []
+            for _ in range(len(self.particles)):
+                newParticles.append(sample(weights))## There was a problem here, I couldnt use util.sample so I imported from util the sample
+            self.particles = newParticles
         "*** END YOUR CODE HERE ***"
     
     ########### ########### ###########
@@ -645,5 +732,15 @@ class ParticleFilter(InferenceModule):
         gameState.
         """
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        newParticles = []
+    
+        for oldParticle in self.particles:
+            # Get the new distribution over new positions for this particle
+            newPosDist = self.getPositionDistribution(gameState, oldParticle)
+            
+            # Sample a new position for the particle based on the distribution
+            newParticle = newPosDist.sample()
+            newParticles.append(newParticle)
+        
+        self.particles = newParticles
         "*** END YOUR CODE HERE ***"
