@@ -186,6 +186,7 @@ def inferenceByVariableEliminationWithCallTracking(callTrackingList=None):
         joinFactors
         """
         
+        
         # this is for autograding -- don't modify
         joinFactorsByVariable = joinFactorsByVariableWithCallTracking(callTrackingList)
         eliminate = eliminateWithCallTracking(callTrackingList)
