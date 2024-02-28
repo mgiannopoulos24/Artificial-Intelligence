@@ -1,6 +1,6 @@
 ## Artificial Intelligence
 
-This repository contains the solutions for the Projects 0,1,2,3,4 on the Course CS 188 of Berkeley University.
+This repository contains the solutions for the Projects 0,1,2,3,4 on the Course CS 188 of Berkeley University as of Fall 2023.
 
 [Project 0 - Tutorial](https://inst.eecs.berkeley.edu/~cs188/fa23/projects/proj0/)<br>
 [Project 1 - Search](https://inst.eecs.berkeley.edu/~cs188/fa23/projects/proj1/)<br>
