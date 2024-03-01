@@ -225,8 +225,6 @@ def inferenceByVariableEliminationWithCallTracking(callTrackingList=None):
         normalizedFactor = normalize(finalFactor)
 
         return normalizedFactor
-
-
         "*** END YOUR CODE HERE ***"
         
     return inferenceByVariableElimination
