@@ -185,7 +185,7 @@ def inferenceByVariableEliminationWithCallTracking(callTrackingList=None):
         joinFactorsByVariable
         joinFactors
         """
-        
+        callTrackingList = []  # Track calls for autograding
         
         # this is for autograding -- don't modify
         joinFactorsByVariable = joinFactorsByVariableWithCallTracking(callTrackingList)
@@ -196,6 +196,43 @@ def inferenceByVariableEliminationWithCallTracking(callTrackingList=None):
             eliminationOrder = sorted(list(eliminationVariables))
             
         "*** YOUR CODE HERE ***"
+        factors = bayesNet.getAllCPTsWithEvidence(evidenceDict)
+
+        for variable in eliminationOrder:
+            # Determine which factors need to be joined based on the current variable
+            factorsToJoin = [factor for factor in factors if variable in factor.variablesSet()]
+            
+            # Clear the callTrackingList before the join operation
+            callTrackingList.clear()
+
+            # Join factors containing the variable
+            if factorsToJoin:
+                joinFactorsByVariable(factorsToJoin, variable)
+                
+                # Extract the joined factor from callTrackingList
+                # Assuming the joined factor is the last entry in the list
+                _, joinedFactor = callTrackingList[-1]
+
+                # Check if joinedFactor is a factor and not a tuple before proceeding
+                if hasattr(joinedFactor, 'unconditionedVariables') and len(joinedFactor.unconditionedVariables()) > 1:
+                    # Eliminate the variable from the joined factor
+                    eliminatedFactor = eliminate(joinedFactor, variable)
+
+                    # Assuming eliminate updates the callTrackingList with the eliminated factor
+                    _, eliminatedFactor = callTrackingList[-1]
+
+                    # Update the factors list after elimination
+                    factors = [f for f in factors if variable not in f.variablesSet()] + [eliminatedFactor]
+                else:
+                    # If there's only one unconditioned variable, discard the factor
+                    factors = [f for f in factors if variable not in f.variablesSet()]
+
+        # Join any remaining factors and normalize
+        finalFactor = joinFactors(factors)
+        normalizedFactor = normalize(finalFactor)
+
+        return normalizedFactor
+        
         "*** END YOUR CODE HERE ***"
 
 
