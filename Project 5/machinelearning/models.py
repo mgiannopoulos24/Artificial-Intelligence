@@ -231,6 +231,12 @@ class LanguageIDModel(object):
 
         
         "*** YOUR CODE HERE ***"
+        self.hidden_size = 128  # Arbitrary choice, can be tuned
+        self.Wxh = nn.Parameter(self.num_chars, self.hidden_size)
+        self.Whh = nn.Parameter(self.hidden_size, self.hidden_size)
+        self.bh = nn.Parameter(1, self.hidden_size)
+        self.Why = nn.Parameter(self.hidden_size, len(self.languages))
+        self.by = nn.Parameter(1, len(self.languages))
     
 
     def run(self, xs):
@@ -263,7 +269,21 @@ class LanguageIDModel(object):
                 (also called logits)
         """
         "*** YOUR CODE HERE ***"
-        
+        h = None  # Initialize hidden state to None
+
+        for i, x in enumerate(xs):
+            # For the first input, initialize h directly from the input without considering the previous hidden state.
+            if i == 0:
+                # Apply linear transformation and add bias
+                h = nn.ReLU(nn.AddBias(nn.Linear(x, self.Wxh), self.bh))
+            else:
+                # For subsequent inputs, incorporate the previous hidden state in the calculations.
+                # We apply linear transformation to the input and hidden state, then add the biases.
+                h = nn.ReLU(nn.AddBias(nn.Add(nn.Linear(x, self.Wxh), nn.Linear(h, self.Whh)), self.bh))
+
+        # After processing all inputs, apply a linear transformation to h and add the output layer bias to get the scores.
+        scores = nn.AddBias(nn.Linear(h, self.Why), self.by)
+        return scores
         
 
 
@@ -282,6 +302,8 @@ class LanguageIDModel(object):
         Returns: a loss node
         """
         "*** YOUR CODE HERE ***"
+        scores = self.run(xs)
+        return nn.SoftmaxLoss(scores, y)
     
             
 
@@ -290,7 +312,23 @@ class LanguageIDModel(object):
         Trains the model.
         """
         "*** YOUR CODE HERE ***"
-        
+        learning_rate = 0.01  # Define the learning rate
+
+        for epoch in range(10):  # Number of epochs can be adjusted
+            total_loss = 0
+            for x, y in dataset.iterate_once(batch_size=2):  # Batch Sizes tried and their accuracy: 2 -> 86%, 3 -> 84%, 5 -> 85% , 10 -> 82%
+                loss = self.get_loss(x, y)
+                total_loss += nn.as_scalar(loss)
+
+                # Compute gradients
+                gradients = nn.gradients(loss, [self.Wxh, self.Whh, self.bh, self.Why, self.by])
+
+                # Update parameters manually
+                for param, grad in zip([self.Wxh, self.Whh, self.bh, self.Why, self.by], gradients):
+                    param.update(grad, -learning_rate)  # Using the update method from the Parameter class
+
+            print(f"Epoch {epoch}, Loss: {total_loss}")
+            
         
         
         
