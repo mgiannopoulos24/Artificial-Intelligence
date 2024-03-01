@@ -227,9 +227,9 @@ def inferenceByVariableEliminationWithCallTracking(callTrackingList=None):
                     # If there's only one unconditioned variable, discard the factor
                     factors = [f for f in factors if variable not in f.variablesSet()]
 
-        # Join any remaining factors and normalize
+        # Join any remaining factors
         finalFactor = joinFactors(factors)
-        normalizedFactor = normalize(finalFactor)
+        normalizedFactor = finalFactor
 
         return normalizedFactor
         
