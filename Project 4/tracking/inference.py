@@ -229,7 +229,7 @@ def inferenceByVariableEliminationWithCallTracking(callTrackingList=None):
 
         # Join any remaining factors
         finalFactor = joinFactors(factors)
-        normalizedFactor = finalFactor
+        normalizedFactor = normalize(finalFactor)
 
         return normalizedFactor
         "*** END YOUR CODE HERE ***"
