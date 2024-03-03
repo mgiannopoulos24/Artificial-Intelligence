@@ -87,16 +87,80 @@ def depthFirstSearch(problem: SearchProblem):
     print("Start's successors:", problem.getSuccessors(problem.getStartState()))
     """
     "*** YOUR CODE HERE ***"
+    stack = util.Stack()
+    visited = set()
+    
+    # push the starting point to the stack with an empty list of actions
+    stack.push((problem.getStartState(), []))
+    
+    while not stack.isEmpty():
+        current_state, actions = stack.pop()
+
+        if problem.isGoalState(current_state):
+            return actions
+
+        if current_state not in visited:
+            visited.add(current_state)
+
+            for successor, action, _ in problem.getSuccessors(current_state):
+                if successor not in visited:
+                    # add the current action to the list of actions
+                    new_actions = actions + [action]
+                    stack.push((successor, new_actions))
+
     util.raiseNotDefined()
 
 def breadthFirstSearch(problem: SearchProblem):
     """Search the shallowest nodes in the search tree first."""
     "*** YOUR CODE HERE ***"
+    queue = util.Queue()
+    visited = set()
+
+    # push the starting point to the queue with an empty list of actions
+    queue.push((problem.getStartState(), []))
+
+    while not queue.isEmpty():
+        current_state, actions = queue.pop()
+
+        if problem.isGoalState(current_state):
+            return actions
+
+        if current_state not in visited:
+            visited.add(current_state)
+
+            for successor, action, _ in problem.getSuccessors(current_state):
+                if successor not in visited:
+                    # add the current action to the list of actions
+                    new_actions = actions + [action]
+                    queue.push((successor, new_actions))
     util.raiseNotDefined()
 
 def uniformCostSearch(problem: SearchProblem):
     """Search the node of least total cost first."""
     "*** YOUR CODE HERE ***"
+    pq = util.PriorityQueue()
+    visited = set()
+
+    # push the starting point to the priority queue with a priority of 0
+    pq.push((problem.getStartState(), [], 0), 0)
+
+    while not pq.isEmpty():
+        current_state, actions, current_cost = pq.pop()
+
+        if problem.isGoalState(current_state):
+            return actions
+
+        if current_state not in visited:
+            visited.add(current_state)
+
+            for successor, action, step_cost in problem.getSuccessors(current_state):
+                if successor not in visited:
+                    # calculate the new cumulative cost
+                    new_cost = current_cost + step_cost
+                    # add the current action to the list of actions
+                    new_actions = actions + [action]
+                    pq.push((successor, new_actions, new_cost), new_cost)
+
     util.raiseNotDefined()
 
 def nullHeuristic(state, problem=None):
@@ -109,6 +173,29 @@ def nullHeuristic(state, problem=None):
 def aStarSearch(problem: SearchProblem, heuristic=nullHeuristic):
     """Search the node that has the lowest combined cost and heuristic first."""
     "*** YOUR CODE HERE ***"
+    pq = util.PriorityQueue()
+    visited = set()
+
+    start_state = problem.getStartState()
+    # push the starting point to the priority queue with a priority of 0 + heuristic
+    pq.push((start_state, [], 0), heuristic(start_state, problem))
+
+    while not pq.isEmpty():
+        current_state, actions, current_cost = pq.pop()
+
+        if problem.isGoalState(current_state):
+            return actions
+
+        if current_state not in visited:
+            visited.add(current_state)
+
+            for successor, action, step_cost in problem.getSuccessors(current_state):
+                if successor not in visited:
+                    new_cost = current_cost + step_cost
+                    new_actions = actions + [action]
+                    # The priority is the current cost plus the heuristic for the successor
+                    priority = new_cost + heuristic(successor, problem)
+                    pq.push((successor, new_actions, new_cost), priority)
     util.raiseNotDefined()
 
 
