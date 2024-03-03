@@ -492,21 +492,29 @@ def foodHeuristic(state: Tuple[Tuple, List[List]], problem: FoodSearchProblem):
     """
     position, foodGrid = state
     "*** YOUR CODE HERE ***"
-    foodList = foodGrid.asList()
+    if problem.isGoalState(state):
+        return 0                                # Return 0 in case of a goal state
+    
+    position, foodGrid = state                  # Get the parent position and food Grid
+    food = foodGrid.asList()
+    maxDistance = 0
 
-    # If there is no food left, the cost to goal is zero
-    if not foodList:
-        return 0
-
-    # Manhattan distance function
-    def manhattanDistance(xy1, xy2):
-        return abs(xy1[0] - xy2[0]) + abs(xy1[1] - xy2[1])
-
-    # Calculate the distance to each food dot
-    distances = [manhattanDistance(position, food) for food in foodList]
-
-    # The heuristic is the maximum of these distances
-    return max(distances)
+    # First, we find the two dots with the biggest distance
+    # Initialize both as the first dot in the food grid
+    # There is at least one dot, otherwise a goal state would have been detected
+    first = food[0]
+    second = food[0]
+    for i in range(len(food)):
+        for j in range(i + 1, len(food)):
+            dist = util.manhattanDistance(food[i], food[j])
+            if dist > maxDistance:
+                maxDistance = dist
+                first = food[i]
+                second = food[j]
+    
+    # Return the maximum distance between any 2 uneaten dots, plus the minimum distance
+    # between the current position and any one of them
+    return maxDistance + min( (util.manhattanDistance(position, first), util.manhattanDistance(position, second)) )
 
 class ClosestDotSearchAgent(SearchAgent):
     "Search for all food using a sequence of searches"
