@@ -50,7 +50,13 @@ def sentence1() -> Expr:
     (not A) or (not B) or C
     """
     "*** BEGIN YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    # Construct each proposition
+    A_or_B = Expr('|', 'A', 'B')
+    not_A_iff_notB_or_C = Expr('<=>', Expr('~', 'A'), Expr('|', Expr('~', 'B'), 'C'))
+    not_A_or_not_B_or_C = Expr('|', Expr('~', 'A'), Expr('~', 'B'), 'C')
+
+    # Return the conjunction of all three propositions
+    return Expr('&', A_or_B, not_A_iff_notB_or_C, not_A_or_not_B_or_C)
     "*** END YOUR CODE HERE ***"
 
 
