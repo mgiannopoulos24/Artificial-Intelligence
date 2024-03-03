@@ -10,6 +10,6 @@ This folder contains the solutions for the Projects 0,1,2,3 on the Course CS 188
 
 The scores are:
 - Project 0: 3/3
-- Project 1: 25/25
-- Project 2: 25/25
-- Project 3: 25/25 (Q3 has a score of 5/6 but since Q4 is a bonus question and gives 1 extra credit it completes the missing credit)
+- Project 1: 24/25 (Missed one point on Q7 on the tricky test.)
+- Project 2: 
+- Project 3: 
