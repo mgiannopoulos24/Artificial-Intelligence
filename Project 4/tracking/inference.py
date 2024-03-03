@@ -196,6 +196,7 @@ def inferenceByVariableEliminationWithCallTracking(callTrackingList=None):
             eliminationOrder = sorted(list(eliminationVariables))
             
         "*** YOUR CODE HERE ***"
+        # Get all the CPTs with evidence applied
         factors = bayesNet.getAllCPTsWithEvidence(evidenceDict)
         
         for variable in eliminationOrder:
@@ -223,7 +224,7 @@ def inferenceByVariableEliminationWithCallTracking(callTrackingList=None):
 
         # Normalize the final factor
         normalizedFactor = normalize(finalFactor)
-
+        
         return normalizedFactor
         "*** END YOUR CODE HERE ***"
         
