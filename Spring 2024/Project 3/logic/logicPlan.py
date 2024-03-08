@@ -50,13 +50,11 @@ def sentence1() -> Expr:
     (not A) or (not B) or C
     """
     "*** BEGIN YOUR CODE HERE ***"
-    # Construct each proposition
-    A_or_B = Expr('|', 'A', 'B')
-    not_A_iff_notB_or_C = Expr('<=>', Expr('~', 'A'), Expr('|', Expr('~', 'B'), 'C'))
-    not_A_or_not_B_or_C = Expr('|', Expr('~', 'A'), Expr('~', 'B'), 'C')
-
-    # Return the conjunction of all three propositions
-    return Expr('&', A_or_B, not_A_iff_notB_or_C, not_A_or_not_B_or_C)
+    # The expressions are directly translated from the propositional logic.
+    expr1 = Expr('A') | Expr('B')
+    expr2 = ~Expr('A') >> (Expr('B') | Expr('C'))
+    expr3 = ~Expr('A') | ~Expr('B') | Expr('C')
+    return [expr1, expr2, expr3]
     "*** END YOUR CODE HERE ***"
 
 
@@ -69,16 +67,10 @@ def sentence2() -> Expr:
     (not D) implies C
     """
     "*** BEGIN YOUR CODE HERE ***"
-    # Construct each proposition
-    C_iff_B_or_D = Expr('<=>', 'C', Expr('|', 'B', 'D'))
-    A_implies_notB_and_notD = Expr('=>', 'A', Expr('&', Expr('~', 'B'), Expr('~', 'D')))
-    notB_and_notC_implies_A = Expr('=>', Expr('~', Expr('&', 'B', Expr('~', 'C'))), 'A')
-    notD_implies_C = Expr('=>', Expr('~', 'D'), 'C')
-
-    # Return the conjunction of all four propositions
-    return Expr('&', C_iff_B_or_D, A_implies_notB_and_notD, notB_and_notC_implies_A, notD_implies_C)
-    util.raiseNotDefined()
-    
+    expr1 = Expr('C') % (Expr('B') | Expr('D'))
+    expr2 = Expr('A') >> (~Expr('B') & ~Expr('D'))
+    expr3 = (~Expr('B') & ~Expr('C')) >> Expr('A')
+    return [expr1, expr2, expr3]    
     "*** END YOUR CODE HERE ***"
 
 
@@ -95,26 +87,14 @@ def sentence3() -> Expr:
     Pacman is born at time 0.
     """
     "*** BEGIN YOUR CODE HERE ***"
-    
-    PacmanAlive_0 = PropSymbolExpr('PacmanAlive_0')
-    PacmanAlive_1 = PropSymbolExpr('PacmanAlive_1')
-    PacmanBorn_0 = PropSymbolExpr('PacmanBorn_0')
-    PacmanKilled_0 = PropSymbolExpr('PacmanKilled_0')
-    
-    # Pacman is alive at time 1 if and only if (Pacman was alive at time 0 and not killed at time 0) or (Pacman was not alive at time 0 and was born at time 0)
-    expr1 = PacmanAlive_1 % ((PacmanAlive_0 & ~PacmanKilled_0) | (~PacmanAlive_0 & PacmanBorn_0))
-    
-    # Pacman cannot both be alive and be born at time 0
+    PacmanAlive_0 = PropSymbolExpr('PacmanAlive', 0)
+    PacmanAlive_1 = PropSymbolExpr('PacmanAlive', 1)
+    PacmanBorn_0 = PropSymbolExpr('PacmanBorn', 0)
+    PacmanKilled_0 = PropSymbolExpr('PacmanKilled', 0)
+    expr = (PacmanAlive_1 % ((PacmanAlive_0 & ~PacmanKilled_0) | (~PacmanAlive_0 & PacmanBorn_0)))
     expr2 = ~(PacmanAlive_0 & PacmanBorn_0)
-    
-    # Pacman is born at time 0
     expr3 = PacmanBorn_0
-    
-    # Combine the expressions
-    sentence = expr1 & expr2 & expr3
-    
-    return sentence
-    util.raiseNotDefined()
+    return [expr, expr2, expr3]    
     "*** END YOUR CODE HERE ***"
 
 def findModel(sentence: Expr) -> Dict[Expr, bool]:
@@ -130,21 +110,12 @@ def findModelUnderstandingCheck() -> Dict[Expr, bool]:
     """
     a = Expr('A')
     "*** BEGIN YOUR CODE HERE ***"
-    return {'a': True}  # Assuming 'a' is True
-    print("a.__dict__ is:", a.__dict__) # might be helpful for getting ideas
-    util.raiseNotDefined()
     "*** END YOUR CODE HERE ***"
 
 def entails(premise: Expr, conclusion: Expr) -> bool:
     """Returns True if the premise entails the conclusion and False otherwise.
     """
     "*** BEGIN YOUR CODE HERE ***"
-    # Check if there is a model where the premise is true and the conclusion is false
-    counterexample = findModel(premise & ~conclusion)
-    # If no such model exists, the premise entails the conclusion
-    return counterexample is False
-
-    util.raiseNotDefined()
     "*** END YOUR CODE HERE ***"
 
 def plTrueInverse(assignments: Dict[Expr, bool], inverse_statement: Expr) -> bool:
@@ -152,9 +123,7 @@ def plTrueInverse(assignments: Dict[Expr, bool], inverse_statement: Expr) -> boo
     pl_true may be useful here; see logic.py for its description.
     """
     "*** BEGIN YOUR CODE HERE ***"
-    # Evaluate the truth of not inverse_statement
-    return pl_true(~inverse_statement, assignments)
-    util.raiseNotDefined()
+    return not pl_resolution(assignments, ~inverse_statement)
     "*** END YOUR CODE HERE ***"
 
 #______________________________________________________________________________
@@ -419,57 +388,6 @@ def positionLogicPlan(problem) -> List:
     KB = []
 
     "*** BEGIN YOUR CODE HERE ***"
-    # Initialize KB with the initial state
-    KB.append(f"At({x0},{y0},0)")  # At initial position at time 0
-
-    # Create a dictionary to track the state at each time step
-    state_tracker = {(x0, y0): 0}  # Maps positions to the time step when they're reached
-
-    # Main logic loop
-    for t in range(1, width * height + 1):  # In the worst case, the path could visit all non-wall cells
-        new_state_added = False
-        for x, y in non_wall_coords:
-            if (x, y) in state_tracker and state_tracker[(x, y)] == t - 1:  # If this position was reached in the last time step
-                for action in actions:
-                    if action == 'North' and (x, y + 1) in non_wall_coords:
-                        KB.append(f"At({x},{y + 1},{t})")
-                        state_tracker[(x, y + 1)] = t
-                        new_state_added = True
-                    elif action == 'South' and (x, y - 1) in non_wall_coords:
-                        KB.append(f"At({x},{y - 1},{t})")
-                        state_tracker[(x, y - 1)] = t
-                        new_state_added = True
-                    elif action == 'East' and (x + 1, y) in non_wall_coords:
-                        KB.append(f"At({x + 1},{y},{t})")
-                        state_tracker[(x + 1, y)] = t
-                        new_state_added = True
-                    elif action == 'West' and (x - 1, y) in non_wall_coords:
-                        KB.append(f"At({x - 1},{y},{t})")
-                        state_tracker[(x - 1, y)] = t
-                        new_state_added = True
-
-        # If no new state is added, then no path exists
-        if not new_state_added:
-            break
-
-        # If goal is reached
-        if (xg, yg) in state_tracker and state_tracker[(xg, yg)] == t:
-            # Backtrack to find the path from the goal to the start
-            path = []
-            current_pos = (xg, yg)
-            current_time = t
-            while current_pos != (x0, y0):
-                for x, y in [(0, 1), (0, -1), (1, 0), (-1, 0)]:  # Directions: North, South, East, West
-                    next_pos = (current_pos[0] - x, current_pos[1] - y)
-                    if next_pos in state_tracker and state_tracker[next_pos] == current_time - 1:
-                        path.append((x, y))
-                        current_pos = next_pos
-                        current_time -= 1
-                        break
-            return list(reversed(path))  # Reverse the path to start from the initial position
-
-    return []  # Return an empty path if goal is not reachable
-    util.raiseNotDefined()
     "*** END YOUR CODE HERE ***"
 
 #______________________________________________________________________________
@@ -498,7 +416,6 @@ def foodLogicPlan(problem) -> List:
     KB = []
 
     "*** BEGIN YOUR CODE HERE ***"
-    util.raiseNotDefined()
     "*** END YOUR CODE HERE ***"
 
 #______________________________________________________________________________
