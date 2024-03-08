@@ -196,36 +196,27 @@ def inferenceByVariableEliminationWithCallTracking(callTrackingList=None):
             eliminationOrder = sorted(list(eliminationVariables))
             
         "*** YOUR CODE HERE ***"
-        # Get all the CPTs with evidence applied
-        factors = bayesNet.getAllCPTsWithEvidence(evidenceDict)
-        
-        for variable in eliminationOrder:
-            # Determine which factors need to be joined based on the current variable
-            factorsToJoin = [factor for factor in factors if variable in factor.variablesSet()]
-            
-            # Join factors containing the variable
-            if factorsToJoin:
-                joinedFactors = joinFactorsByVariable(factorsToJoin, variable)
-                
-                # If joinFactorsByVariable returns multiple factors, handle it appropriately
-                if isinstance(joinedFactors, list) and len(joinedFactors) == 1:
-                    joinedFactor = joinedFactors[0]
-                     # Eliminate the variable if it's not a query variable
-                    if variable not in queryVariables and len(joinedFactor.unconditionedVariables()) > 1:
-                        eliminatedFactor = eliminate(joinedFactor, variable)
-                        # Replace the old factors with the new one
-                        factors = [factor for factor in factors if variable not in factor.variablesSet()] + [eliminatedFactor]
-                    else:
-                        raise Exception("joinFactorsByVariable did not return a single factor.")         
-        if len(factors) == 1:
-            finalFactor = factors[0]
-        else:
-            finalFactor = joinFactors(factors)
+        # Prepare factors based on evidence
+        currentFactorsList = bayesNet.getAllCPTsWithEvidence(evidenceDict)
 
-        # Normalize the final factor
-        normalizedFactor = normalize(finalFactor)
+        # Perform variable elimination
+        for variable in eliminationOrder:
+            currentFactorsList, joinedFactor = joinFactorsByVariable(currentFactorsList, variable)
+            currentFactorsList.append(joinedFactor)
+            currentFactorsList = [factor for factor in currentFactorsList if variable not in factor.unconditionedVariables()]
+
+            if len(currentFactorsList) == 0:
+                break
+
+            currentFactorsList = [eliminate(factor, variable) for factor in currentFactorsList]
+            
+        # Join all factors
+        fullJoint = joinFactors(currentFactorsList)
         
-        return normalizedFactor
+        # Normalize the factor
+        queryConditionedOnEvidence = normalize(fullJoint)
+        
+        
         "*** END YOUR CODE HERE ***"
         
     return inferenceByVariableElimination

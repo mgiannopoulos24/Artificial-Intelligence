@@ -194,6 +194,7 @@ def inferenceByVariableEliminationWithCallTracking(callTrackingList=None):
             eliminationOrder = sorted(list(eliminationVariables))
 
         "*** YOUR CODE HERE ***"
+        
         "*** END YOUR CODE HERE ***"
 
 
