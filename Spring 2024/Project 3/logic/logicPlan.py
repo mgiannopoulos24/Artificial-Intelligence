@@ -245,19 +245,7 @@ def pacmanSuccessorAxiomSingle(x: int, y: int, time: int, walls_grid: List[List[
         return None
     
     "*** BEGIN YOUR CODE HERE ***"
-    now = time
-    last = time - 1
-    pacman_now = PropSymbolExpr(pacman_str, x, y, time=now)
-    possible_causes = []
-
-    # You have already filled the possible_causes list with the correct expressions.
-
-    # The disjunction of all possible causes: one of these must be true for Pacman to be at (x,y) at time now.
-    causes_disjunction = disjoin(possible_causes)
-    
-    # The bi-conditional expression: Pacman is at (x,y) at time now if and only if one of the possible causes is true.
-    return iff(pacman_now, causes_disjunction)
-    util.raiseNotDefined()
+    return PropSymbolExpr('P', x, y, time) % disjoin(possible_causes)
     "*** END YOUR CODE HERE ***"
 
 
@@ -328,33 +316,30 @@ def pacphysicsAxioms(t: int, all_coords: List[Tuple], non_outer_wall_coords: Lis
     pacphysics_sentences = []
 
     "*** BEGIN YOUR CODE HERE ***"
-    # Wall constraints: Pacman cannot be where there is a wall
+    # Walls imply no Pacman
     for x, y in all_coords:
-        if walls_grid[x][y]:  # Assuming walls_grid[x][y] is True if there is a wall
-            pacphysics_sentences.append(~PropSymbolExpr(pacman_str, x, y, time=t))
+        if walls_grid[x][y]:
+            pacphysics_sentences.append(~PropSymbolExpr('P', x, y, t))
 
-    # Pacman location constraint: Pacman is at exactly one location
-    pacman_at_one_place = exactlyOne([PropSymbolExpr(pacman_str, x, y, time=t) for x, y in non_outer_wall_coords])
-    pacphysics_sentences.append(pacman_at_one_place)
+    # Pacman is at exactly one square
+    pacman_at_squares = [PropSymbolExpr('P', x, y, t) for (x, y) in non_outer_wall_coords]
+    pacphysics_sentences.append(exactlyOne(pacman_at_squares))
 
-    # Pacman action constraint: Pacman takes exactly one action
-    actions = ['North', 'East', 'South', 'West']
-    pacman_one_action = exactlyOne([PropSymbolExpr(action, time=t) for action in actions])
-    pacphysics_sentences.append(pacman_one_action)
+    # Pacman takes exactly one action
+    actions = ['North', 'South', 'East', 'West']
+    pacman_actions = [PropSymbolExpr(action, t) for action in actions]
+    pacphysics_sentences.append(exactlyOne(pacman_actions))
 
-    # Sensor Model
-    if sensorModel is not None:
-        sensor_axioms = sensorModel(t, non_outer_wall_coords)
-        pacphysics_sentences.append(sensor_axioms)
+    # Sensor model axioms
+    if sensorModel:
+        pacphysics_sentences.append(sensorModel(t, non_outer_wall_coords))
 
-    # Successor Axioms
-    if successorAxioms is not None:
-        successor_axioms = successorAxioms(t, walls_grid, non_outer_wall_coords)
-        pacphysics_sentences.append(successor_axioms)
+    # Successor axioms
+    if successorAxioms:
+        for x, y in non_outer_wall_coords:
+            pacphysics_sentences.append(successorAxioms(x, y, t, walls_grid))
 
-    # Combine all sentences
     
-    util.raiseNotDefined()
     "*** END YOUR CODE HERE ***"
 
     return conjoin(pacphysics_sentences)
@@ -388,7 +373,25 @@ def checkLocationSatisfiability(x1_y1: Tuple[int, int], x0_y0: Tuple[int, int], 
     KB.append(conjoin(map_sent))
 
     "*** BEGIN YOUR CODE HERE ***"
-    
+    KB = []
+
+    # Initial knowledge about Pacman's location and action
+    KB.append(PropSymbolExpr('P', x0_y0[0], x0_y0[1], 0))
+    KB.append(PropSymbolExpr(action0, 0))
+
+    # Knowledge about walls
+    for (x, y) in problem.walls.asList():
+        KB.append(~PropSymbolExpr('P', x, y, 1))
+
+    # Add successor axioms
+    for (x, y) in problem.walls.asList():
+        KB.append(pacmanSuccessorAxiomSingle(x, y, 1, problem.walls))
+
+    # Create models to check satisfiability
+    model_1 = findModel(conjoin(KB) & PropSymbolExpr('P', x1_y1[0], x1_y1[1], 1))
+    model_2 = findModel(conjoin(KB) & ~PropSymbolExpr('P', x1_y1[0], x1_y1[1], 1))
+
+    return model_1, model_2
     util.raiseNotDefined()
     "*** END YOUR CODE HERE ***"
 
@@ -416,6 +419,56 @@ def positionLogicPlan(problem) -> List:
     KB = []
 
     "*** BEGIN YOUR CODE HERE ***"
+    # Initialize KB with the initial state
+    KB.append(f"At({x0},{y0},0)")  # At initial position at time 0
+
+    # Create a dictionary to track the state at each time step
+    state_tracker = {(x0, y0): 0}  # Maps positions to the time step when they're reached
+
+    # Main logic loop
+    for t in range(1, width * height + 1):  # In the worst case, the path could visit all non-wall cells
+        new_state_added = False
+        for x, y in non_wall_coords:
+            if (x, y) in state_tracker and state_tracker[(x, y)] == t - 1:  # If this position was reached in the last time step
+                for action in actions:
+                    if action == 'North' and (x, y + 1) in non_wall_coords:
+                        KB.append(f"At({x},{y + 1},{t})")
+                        state_tracker[(x, y + 1)] = t
+                        new_state_added = True
+                    elif action == 'South' and (x, y - 1) in non_wall_coords:
+                        KB.append(f"At({x},{y - 1},{t})")
+                        state_tracker[(x, y - 1)] = t
+                        new_state_added = True
+                    elif action == 'East' and (x + 1, y) in non_wall_coords:
+                        KB.append(f"At({x + 1},{y},{t})")
+                        state_tracker[(x + 1, y)] = t
+                        new_state_added = True
+                    elif action == 'West' and (x - 1, y) in non_wall_coords:
+                        KB.append(f"At({x - 1},{y},{t})")
+                        state_tracker[(x - 1, y)] = t
+                        new_state_added = True
+
+        # If no new state is added, then no path exists
+        if not new_state_added:
+            break
+
+        # If goal is reached
+        if (xg, yg) in state_tracker and state_tracker[(xg, yg)] == t:
+            # Backtrack to find the path from the goal to the start
+            path = []
+            current_pos = (xg, yg)
+            current_time = t
+            while current_pos != (x0, y0):
+                for x, y in [(0, 1), (0, -1), (1, 0), (-1, 0)]:  # Directions: North, South, East, West
+                    next_pos = (current_pos[0] - x, current_pos[1] - y)
+                    if next_pos in state_tracker and state_tracker[next_pos] == current_time - 1:
+                        path.append((x, y))
+                        current_pos = next_pos
+                        current_time -= 1
+                        break
+            return list(reversed(path))  # Reverse the path to start from the initial position
+
+    return []  # Return an empty path if goal is not reachable
     util.raiseNotDefined()
     "*** END YOUR CODE HERE ***"
 
