@@ -13,4 +13,4 @@ The scores are:
 - Project 1: 25/25
 - Project 2: 25/25
 - Project 3: 
-- Project 4: 
+- Project 4: 18/20
