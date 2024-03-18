@@ -196,27 +196,26 @@ def inferenceByVariableEliminationWithCallTracking(callTrackingList=None):
             eliminationOrder = sorted(list(eliminationVariables))
             
         "*** YOUR CODE HERE ***"
-        # Prepare factors based on evidence
-        currentFactorsList = bayesNet.getAllCPTsWithEvidence(evidenceDict)
+        factors = bayesNet.getAllCPTsWithEvidence(evidenceDict)
 
-        # Perform variable elimination
         for variable in eliminationOrder:
-            currentFactorsList, joinedFactor = joinFactorsByVariable(currentFactorsList, variable)
-            currentFactorsList.append(joinedFactor)
-            currentFactorsList = [factor for factor in currentFactorsList if variable not in factor.unconditionedVariables()]
+            # Round up the factors where our variable is hanging out
+            factorsWithVariable = [f for f in factors if variable in f.variables()]
+            if factorsWithVariable:
+                # Get these factors to join up
+                bigFactor = joinFactors(factorsWithVariable)
+                # Only show the variable the door if it's not the only unconditioned one
+                if len(bigFactor.unconditionedVariables()) > 1:
+                    trimmedFactor = eliminate(bigFactor, variable)
+                    factors = [f for f in factors if variable not in f.variables()] + [trimmedFactor]
+                else:
+                    # If it's the only unconditioned variable, just update the factors list without eliminating
+                    factors = [f for f in factors if variable not in f.variables()] + [bigFactor]
 
-            if len(currentFactorsList) == 0:
-                break
-
-            currentFactorsList = [eliminate(factor, variable) for factor in currentFactorsList]
-            
-        # Join all factors
-        fullJoint = joinFactors(currentFactorsList)
-        
-        # Normalize the factor
-        queryConditionedOnEvidence = normalize(fullJoint)
-        
-        
+        # Join any leftover factors and normalize
+        finalFactor = joinFactors(factors)
+        normalizedFactor = normalize(finalFactor)
+        return normalizedFactor
         "*** END YOUR CODE HERE ***"
         
     return inferenceByVariableElimination
