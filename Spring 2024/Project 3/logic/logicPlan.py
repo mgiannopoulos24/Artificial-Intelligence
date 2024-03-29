@@ -29,6 +29,8 @@ from logic import PropSymbolExpr, Expr, to_cnf, pycoSAT, parseExpr, pl_true
 import itertools 
 import copy
 
+
+
 pacman_str = 'P'
 food_str = 'FOOD'
 wall_str = 'WALL'
@@ -52,9 +54,13 @@ def sentence1() -> Expr:
     "*** BEGIN YOUR CODE HERE ***"
     # The expressions are directly translated from the propositional logic.
     expr1 = Expr('A') | Expr('B')
-    expr2 = ~Expr('A') >> (Expr('B') | Expr('C'))
-    expr3 = ~Expr('A') | ~Expr('B') | Expr('C')
-    return [expr1, expr2, expr3]
+    expr2 = (~Expr('A')) % ((~Expr('B')) | Expr('C'))
+    expr3 = (~Expr('A')) | ~Expr('B') | Expr('C')
+    
+    # Combine the expressions using conjunction
+    combined_expr = expr1 & expr2 & expr3
+    
+    return combined_expr
     "*** END YOUR CODE HERE ***"
 
 
@@ -69,8 +75,13 @@ def sentence2() -> Expr:
     "*** BEGIN YOUR CODE HERE ***"
     expr1 = Expr('C') % (Expr('B') | Expr('D'))
     expr2 = Expr('A') >> (~Expr('B') & ~Expr('D'))
-    expr3 = (~Expr('B') & ~Expr('C')) >> Expr('A')
-    return [expr1, expr2, expr3]    
+    expr3 = (~(Expr('B') & ~Expr('C'))) >> Expr('A')
+    expr4 = (~Expr('D')) >> Expr('C')
+    
+    # Combine the expressions using conjunction
+    combined_expr = (expr1 & expr2 & expr3) & expr4
+    
+    return combined_expr
     "*** END YOUR CODE HERE ***"
 
 
@@ -91,10 +102,10 @@ def sentence3() -> Expr:
     PacmanAlive_1 = PropSymbolExpr('PacmanAlive', 1)
     PacmanBorn_0 = PropSymbolExpr('PacmanBorn', 0)
     PacmanKilled_0 = PropSymbolExpr('PacmanKilled', 0)
-    expr = (PacmanAlive_1 % ((PacmanAlive_0 & ~PacmanKilled_0) | (~PacmanAlive_0 & PacmanBorn_0)))
+    expr1 = PacmanAlive_1 % ((PacmanAlive_0 & ~PacmanKilled_0) | (~PacmanAlive_0 & PacmanBorn_0))
     expr2 = ~(PacmanAlive_0 & PacmanBorn_0)
     expr3 = PacmanBorn_0
-    return [expr, expr2, expr3]    
+    return [expr1, expr2, expr3] 
     "*** END YOUR CODE HERE ***"
 
 def findModel(sentence: Expr) -> Dict[Expr, bool]:
@@ -110,12 +121,21 @@ def findModelUnderstandingCheck() -> Dict[Expr, bool]:
     """
     a = Expr('A')
     "*** BEGIN YOUR CODE HERE ***"
+    return {a: True}
     "*** END YOUR CODE HERE ***"
 
 def entails(premise: Expr, conclusion: Expr) -> bool:
     """Returns True if the premise entails the conclusion and False otherwise.
     """
     "*** BEGIN YOUR CODE HERE ***"
+    # Negation of the implication of the premise and the negation of the conclusion
+    # Negation of the implication of the premise and the negation of the conclusion
+    neg_implication = ~(premise >> ~conclusion)
+    
+    # Check if the negation of the implication is unsatisfiable
+    model = findModel(neg_implication)
+    
+    return model == False
     "*** END YOUR CODE HERE ***"
 
 def plTrueInverse(assignments: Dict[Expr, bool], inverse_statement: Expr) -> bool:
@@ -123,7 +143,7 @@ def plTrueInverse(assignments: Dict[Expr, bool], inverse_statement: Expr) -> boo
     pl_true may be useful here; see logic.py for its description.
     """
     "*** BEGIN YOUR CODE HERE ***"
-    return not pl_resolution(assignments, ~inverse_statement)
+    return pl_true(assignments, ~inverse_statement)
     "*** END YOUR CODE HERE ***"
 
 #______________________________________________________________________________
