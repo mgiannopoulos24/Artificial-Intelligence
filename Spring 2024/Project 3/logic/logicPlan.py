@@ -55,10 +55,10 @@ def sentence1() -> Expr:
     # The expressions are directly translated from the propositional logic.
     expr1 = Expr('A') | Expr('B')
     expr2 = (~Expr('A')) % ((~Expr('B')) | Expr('C'))
-    expr3 = (~Expr('A')) | ~Expr('B') | Expr('C')
+    expr3 = ((~Expr('A')) | (~Expr('B'))) | Expr('C')  # Added parenthesis around (~Expr('A')) | (~Expr('B'))
     
-    # Combine the expressions using conjunction
-    combined_expr = expr1 & expr2 & expr3
+    # Combine the expressions using conjoin
+    combined_expr = conjoin([expr1, expr2, expr3])
     
     return combined_expr
     "*** END YOUR CODE HERE ***"
@@ -73,15 +73,6 @@ def sentence2() -> Expr:
     (not D) implies C
     """
     "*** BEGIN YOUR CODE HERE ***"
-    expr1 = Expr('C') % (Expr('B') | Expr('D'))
-    expr2 = Expr('A') >> (~Expr('B') & ~Expr('D'))
-    expr3 = (~(Expr('B') & ~Expr('C'))) >> Expr('A')
-    expr4 = (~Expr('D')) >> Expr('C')
-    
-    # Combine the expressions using conjunction
-    combined_expr = (expr1 & expr2 & expr3) & expr4
-    
-    return combined_expr
     "*** END YOUR CODE HERE ***"
 
 
@@ -98,14 +89,6 @@ def sentence3() -> Expr:
     Pacman is born at time 0.
     """
     "*** BEGIN YOUR CODE HERE ***"
-    PacmanAlive_0 = PropSymbolExpr('PacmanAlive', 0)
-    PacmanAlive_1 = PropSymbolExpr('PacmanAlive', 1)
-    PacmanBorn_0 = PropSymbolExpr('PacmanBorn', 0)
-    PacmanKilled_0 = PropSymbolExpr('PacmanKilled', 0)
-    expr1 = PacmanAlive_1 % ((PacmanAlive_0 & ~PacmanKilled_0) | (~PacmanAlive_0 & PacmanBorn_0))
-    expr2 = ~(PacmanAlive_0 & PacmanBorn_0)
-    expr3 = PacmanBorn_0
-    return [expr1, expr2, expr3] 
     "*** END YOUR CODE HERE ***"
 
 def findModel(sentence: Expr) -> Dict[Expr, bool]:
@@ -201,7 +184,6 @@ def exactlyOne(literals: List[Expr]) -> Expr:
     "*** BEGIN YOUR CODE HERE ***"
      # Use both atLeastOne and atMostOne.
     return conjoin([atLeastOne(literals), atMostOne(literals)])
-    util.raiseNotDefined()
     "*** END YOUR CODE HERE ***"
 
 #______________________________________________________________________________
@@ -234,7 +216,12 @@ def pacmanSuccessorAxiomSingle(x: int, y: int, time: int, walls_grid: List[List[
         return None
     
     "*** BEGIN YOUR CODE HERE ***"
-    return PropSymbolExpr('P', x, y, time) % disjoin(possible_causes)
+    # Combine possible causes with disjunction
+    possible_causes_disjunction = disjoin(possible_causes)
+    
+    # Combine the condition with the disjunction of possible causes using conjunction
+    successor_expression = PropSymbolExpr(pacman_str, x, y, time=now) % (possible_causes_disjunction)
+    return successor_expression
     "*** END YOUR CODE HERE ***"
 
 
@@ -305,30 +292,30 @@ def pacphysicsAxioms(t: int, all_coords: List[Tuple], non_outer_wall_coords: Lis
     pacphysics_sentences = []
 
     "*** BEGIN YOUR CODE HERE ***"
-    # Walls imply no Pacman
-    for x, y in all_coords:
-        if walls_grid[x][y]:
-            pacphysics_sentences.append(~PropSymbolExpr('P', x, y, t))
+    # Pacman is not on a square where a wall is present
+    for (x, y) in all_coords:
+        if (x, y) not in non_outer_wall_coords:
+            pacphysics_sentences.append(disjoin(negate(Expr("PacmanAt", x, y, t)), Expr("Wall", x, y)))
 
-    # Pacman is at exactly one square
-    pacman_at_squares = [PropSymbolExpr('P', x, y, t) for (x, y) in non_outer_wall_coords]
-    pacphysics_sentences.append(exactlyOne(pacman_at_squares))
+    # Pacman is at exactly one square at timestep t
+    pacphysics_sentences.append(Expr("AtLeastOne", *[Expr("PacmanAt", x, y, t) for (x, y) in non_outer_wall_coords]))
+    pacphysics_sentences.append(Expr("AtMostOne", *[Expr("PacmanAt", x, y, t) for (x, y) in non_outer_wall_coords]))
 
-    # Pacman takes exactly one action
-    actions = ['North', 'South', 'East', 'West']
-    pacman_actions = [PropSymbolExpr(action, t) for action in actions]
-    pacphysics_sentences.append(exactlyOne(pacman_actions))
+    # Pacman takes exactly one action at timestep t
+    pacphysics_sentences.append(Expr("AtLeastOne", *[Expr("Action", action, t) for action in ['North', 'South', 'East', 'West']]))
+    pacphysics_sentences.append(Expr("AtMostOne", *[Expr("Action", action, t) for action in ['North', 'South', 'East', 'West']]))
 
-    # Sensor model axioms
+    # Call sensorModel if provided
     if sensorModel:
         pacphysics_sentences.append(sensorModel(t, non_outer_wall_coords))
 
-    # Successor axioms
+    # Call successorAxioms if provided
     if successorAxioms:
-        for x, y in non_outer_wall_coords:
-            pacphysics_sentences.append(successorAxioms(x, y, t, walls_grid))
+        if walls_grid:
+            pacphysics_sentences.append(successorAxioms(t, walls_grid, non_outer_wall_coords))
+        else:
+            print("Warning: walls_grid not provided. Successor axioms not generated.")
 
-    
     "*** END YOUR CODE HERE ***"
 
     return conjoin(pacphysics_sentences)
@@ -362,26 +349,23 @@ def checkLocationSatisfiability(x1_y1: Tuple[int, int], x0_y0: Tuple[int, int], 
     KB.append(conjoin(map_sent))
 
     "*** BEGIN YOUR CODE HERE ***"
-    KB = []
+    # Add axioms to the KB using pacphysicsAxioms
+    KB.append(pacphysicsAxioms(0, problem.all_coords, problem.non_outer_wall_coords))
+    KB.append(pacphysicsAxioms(1, problem.all_coords, problem.non_outer_wall_coords))
 
-    # Initial knowledge about Pacman's location and action
-    KB.append(PropSymbolExpr('P', x0_y0[0], x0_y0[1], 0))
-    KB.append(PropSymbolExpr(action0, 0))
-
-    # Knowledge about walls
-    for (x, y) in problem.walls.asList():
-        KB.append(~PropSymbolExpr('P', x, y, 1))
-
-    # Add successor axioms
-    for (x, y) in problem.walls.asList():
-        KB.append(pacmanSuccessorAxiomSingle(x, y, 1, problem.walls))
-
-    # Create models to check satisfiability
-    model_1 = findModel(conjoin(KB) & PropSymbolExpr('P', x1_y1[0], x1_y1[1], 1))
-    model_2 = findModel(conjoin(KB) & ~PropSymbolExpr('P', x1_y1[0], x1_y1[1], 1))
-
-    return model_1, model_2
-    util.raiseNotDefined()
+    # Add Pacman's current location (x0, y0) to the KB
+    x0, y0 = x0_y0
+    KB.append(PropSymbolExpr("PacmanAt", x0, y0, 0))
+    
+    # Add Pacman takes action0 and action1 to the KB
+    KB.append(PropSymbolExpr(action0, time=0))
+    KB.append(PropSymbolExpr(action1, time=1))
+    
+    # Query the SAT solver for model1 and model2
+    model1 = findModel(conjoin(KB + [PropSymbolExpr("PacmanAt", x1_y1[0], x1_y1[1], 1)]))
+    model2 = findModel(conjoin(KB + [~PropSymbolExpr("PacmanAt", x1_y1[0], x1_y1[1], 1)]))
+    
+    return model1, model2
     "*** END YOUR CODE HERE ***"
 
 #______________________________________________________________________________
