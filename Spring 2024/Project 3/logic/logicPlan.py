@@ -221,11 +221,6 @@ def pacmanSuccessorAxiomSingle(x: int, y: int, time: int, walls_grid: List[List[
     Note that STOP is not an available action.
     """
     now, last = time, time - 1
-    
-    # Ensure we do not generate expressions for negative time indices
-    if last < 0:
-        return None
-    
     possible_causes: List[Expr] = [] # enumerate all possible causes for P[x,y]_t
     # the if statements give a small performance boost and are required for q4 and q5 correctness
     if walls_grid[x][y+1] != 1:
@@ -240,9 +235,10 @@ def pacmanSuccessorAxiomSingle(x: int, y: int, time: int, walls_grid: List[List[
     if walls_grid[x-1][y] != 1:
         possible_causes.append( PropSymbolExpr(pacman_str, x-1, y, time=last) 
                             & PropSymbolExpr('East', time=last))
+    if not possible_causes:
+        return None
     
     "*** BEGIN YOUR CODE HERE ***"
-    # Return the biconditional expression ensuring Pacman can only be at (x, y, now) if it was in one of the possible causes
     return PropSymbolExpr(pacman_str, x, y, time=now) % disjoin(possible_causes)
     "*** END YOUR CODE HERE ***"
 
@@ -314,31 +310,9 @@ def pacphysicsAxioms(t: int, all_coords: List[Tuple], non_outer_wall_coords: Lis
     pacphysics_sentences = []
 
     "*** BEGIN YOUR CODE HERE ***"
-    # 1. Wall implication: If there's a wall at (x, y), Pacman cannot be at (x, y) at time t
-    for (x, y) in all_coords:
-        wall_expr = PropSymbolExpr(wall_str, x, y)
-        pacman_at_xy_expr = PropSymbolExpr(pacman_str, x, y, time=t)
-        pacphysics_sentences.append(wall_expr >> ~pacman_at_xy_expr)
-
-    # 2. Pacman is at exactly one of the non-wall coordinates at timestep t
-    pacman_exactly_one_expr = exactlyOne([PropSymbolExpr(pacman_str, x, y, time=t) for (x, y) in non_outer_wall_coords])
-    pacphysics_sentences.append(pacman_exactly_one_expr)
-
-    # 3. Pacman takes exactly one action at timestep t
-    action_exactly_one_expr = exactlyOne([PropSymbolExpr(action, time=t) for action in DIRECTIONS])
-    pacphysics_sentences.append(action_exactly_one_expr)
-
-    # 4. Sensor Model Axioms, if provided
-    if sensorModel:
-        pacphysics_sentences.append(sensorModel(t, non_outer_wall_coords))
-
-    # 5. Successor Axioms, if provided
-    if successorAxioms:
-        pacphysics_sentences.append(successorAxioms(t, walls_grid, non_outer_wall_coords))
-
-    # Return the conjunction of all the axioms
-    return conjoin(pacphysics_sentences)
     "*** END YOUR CODE HERE ***"
+
+    return conjoin(pacphysics_sentences)
 
 
 def checkLocationSatisfiability(x1_y1: Tuple[int, int], x0_y0: Tuple[int, int], action0, action1, problem):
@@ -357,35 +331,18 @@ def checkLocationSatisfiability(x1_y1: Tuple[int, int], x0_y0: Tuple[int, int], 
         - a model where Pacman is not at (x1, y1) at time t = 1
     """
     walls_grid = problem.walls
+    walls_list = walls_grid.asList()
     all_coords = list(itertools.product(range(problem.getWidth()+2), range(problem.getHeight()+2)))
     non_outer_wall_coords = list(itertools.product(range(1, problem.getWidth()+1), range(1, problem.getHeight()+1)))
-    
     KB = []
+    x0, y0 = x0_y0
+    x1, y1 = x1_y1
+
+    # We know which coords are walls:
+    map_sent = [PropSymbolExpr(wall_str, x, y) for x, y in walls_list]
+    KB.append(conjoin(map_sent))
 
     "*** BEGIN YOUR CODE HERE ***"
-    # Step 1: Add known wall locations to the KB
-    walls_list = walls_grid.asList()
-    map_sentences = [PropSymbolExpr(wall_str, x, y) for x, y in walls_list]
-    KB.append(conjoin(map_sentences))
-
-    # Step 2: Add Pacman's initial position and actions to the KB
-    x0, y0 = x0_y0
-    KB.append(PropSymbolExpr(pacman_str, x0, y0, time=0))
-    KB.append(PropSymbolExpr(action0, time=0))
-    KB.append(PropSymbolExpr(action1, time=1))
-
-    # Step 3: Add physics axioms for t=0 and t=1
-    KB.append(pacphysicsAxioms(0, all_coords, non_outer_wall_coords, walls_grid=walls_grid, successorAxioms=allLegalSuccessorAxioms))
-    KB.append(pacphysicsAxioms(1, all_coords, non_outer_wall_coords, walls_grid=walls_grid, successorAxioms=allLegalSuccessorAxioms))
-
-    # Step 4: Query the SAT solver for models
-    # Model 1: Check if Pacman can be at (x1, y1) at time t=1
-    model1 = findModel(conjoin(KB + [PropSymbolExpr(pacman_str, x1_y1[0], x1_y1[1], time=1)]))
-    
-    # Model 2: Check if Pacman cannot be at (x1, y1) at time t=1
-    model2 = findModel(conjoin(KB + [~PropSymbolExpr(pacman_str, x1_y1[0], x1_y1[1], time=1)]))
-
-    return model1, model2
     "*** END YOUR CODE HERE ***"
 
 #______________________________________________________________________________
@@ -467,7 +424,41 @@ def foodLogicPlan(problem) -> List:
     KB = []
 
     "*** BEGIN YOUR CODE HERE ***"
-    
+    # Step 1: Add initial knowledge to KB
+    KB.append(PropSymbolExpr(pacman_str, x0, y0, time=0))
+    for (x, y) in food:
+        KB.append(PropSymbolExpr(food_str, x, y, time=0))
+
+    # Step 2: Loop through timesteps
+    for t in range(50):
+        # Pacman can only be in one location at each timestep
+        KB.append(exactlyOne([PropSymbolExpr(pacman_str, x, y, time=t) for (x, y) in non_wall_coords]))
+
+        # Pacman takes exactly one action per timestep
+        KB.append(exactlyOne([PropSymbolExpr(action, time=t) for action in actions]))
+
+        # Add transition model sentences for Pacman positions
+        for (x, y) in non_wall_coords:
+            transition_axiom = pacmanSuccessorAxiomSingle(x, y, t + 1, walls)
+            if transition_axiom:
+                KB.append(transition_axiom)
+
+        # Add food successor axioms
+        for (x, y) in food:
+            food_now = PropSymbolExpr(food_str, x, y, time=t)
+            food_next = PropSymbolExpr(food_str, x, y, time=t + 1)
+            pacman_now = PropSymbolExpr(pacman_str, x, y, time=t)
+            KB.append(food_next % (food_now & ~pacman_now))
+
+        # Check for a solution using the SAT solver
+        goal_assertion = conjoin([~PropSymbolExpr(food_str, x, y, time=t) for (x, y) in food])
+        model = findModel(conjoin(KB + [goal_assertion]))
+        if model:
+            # If a model is found, extract the sequence of actions
+            return extractActionSequence(model, actions)
+
+    # If no solution is found, return an empty list
+    return []
     "*** END YOUR CODE HERE ***"
 
 #______________________________________________________________________________
