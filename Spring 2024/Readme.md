@@ -1,6 +1,6 @@
 ## Artificial Intelligence
 
-This folder contains the solutions for the Projects 0,1,2,3 on the Course CS 188 of Berkeley University as of Spring 2024.
+This folder contains the solutions for the Projects 0,1,2,3,4,5,6 on the Course CS 188 of Berkeley University as of Spring 2024.
 
 [Project 0 - Tutorial](https://inst.eecs.berkeley.edu/~cs188/sp24/projects/proj0/)<br>
 [Project 1 - Search](https://inst.eecs.berkeley.edu/~cs188/sp24/projects/proj1/)<br>
