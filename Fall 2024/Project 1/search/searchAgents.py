@@ -470,51 +470,80 @@ class AStarFoodSearchAgent(SearchAgent):
         self.searchFunction = lambda prob: search.aStarSearch(prob, foodHeuristic)
         self.searchType = FoodSearchProblem
 
-def foodHeuristic(state: Tuple[Tuple, List[List]], problem: FoodSearchProblem):
+def foodHeuristic(state, problem):
     """
-    Your heuristic for the FoodSearchProblem goes here.
-
-    If using A* ever finds a solution that is worse uniform cost search finds,
-    your search may have a but our your heuristic is not admissible!  On the
-    other hand, inadmissible heuristics may find optimal solutions, so be careful.
-
-    The state is a tuple ( pacmanPosition, foodGrid ) where foodGrid is a Grid
-    (see game.py) of either True or False. You can call foodGrid.asList() to get
-    a list of food coordinates instead.
-
-    If you want access to info like walls, capsules, etc., you can query the
-    problem.  For example, problem.walls gives you a Grid of where the walls
-    are.
-
-    If you want to *store* information to be reused in other calls to the
-    heuristic, there is a dictionary called problem.heuristicInfo that you can
-    use. For example, if you only want to count the walls once and store that
-    value, try: problem.heuristicInfo['wallCount'] = problem.walls.count()
-    Subsequent calls to this heuristic can access
-    problem.heuristicInfo['wallCount']
+    A refined heuristic for the FoodSearchProblem that further reduces nodes expanded.
     """
+    from util import PriorityQueue
     position, foodGrid = state
-    "*** YOUR CODE HERE ***"
     food_list = foodGrid.asList()
-
     if not food_list:
-        return 0  # If no food is left, return 0
+        return 0
 
-    # Compute the distance from Pacman to all remaining food
-    pacman_to_food_distances = [util.manhattanDistance(position, food) for food in food_list]
+    heuristicInfo = problem.heuristicInfo
+    if 'mazeDistances' not in heuristicInfo:
+        heuristicInfo['mazeDistances'] = {}
 
-    # Find the closest food distance from Pacman
-    closest_food_distance = min(pacman_to_food_distances)
+    # Compute and cache maze distances from Pacman's position to all food positions
+    min_pacman_to_food = None
+    for food in food_list:
+        key = (position, food)
+        if key not in heuristicInfo['mazeDistances']:
+            maze_dist = mazeDistance(position, food, problem.startingGameState)
+            heuristicInfo['mazeDistances'][key] = maze_dist
+        else:
+            maze_dist = heuristicInfo['mazeDistances'][key]
+        if min_pacman_to_food is None or maze_dist < min_pacman_to_food:
+            min_pacman_to_food = maze_dist
 
-    # Now compute the maximum distance between any two remaining food items
-    max_food_to_food_distance = 0
-    for i, food1 in enumerate(food_list):
-        for food2 in food_list[i+1:]:
-            max_food_to_food_distance = max(max_food_to_food_distance, util.manhattanDistance(food1, food2))
+    # If only one food is left, return the distance to it
+    if len(food_list) == 1:
+        return min_pacman_to_food
 
-    # The heuristic will be the sum of the distance to the closest food and the max distance between any two foods
-    return closest_food_distance + max_food_to_food_distance
+    # Compute and cache maze distances between all pairs of food positions
+    distances = {}
+    for i in range(len(food_list)):
+        for j in range(i + 1, len(food_list)):
+            pos1 = food_list[i]
+            pos2 = food_list[j]
+            key = (pos1, pos2)
+            if key not in heuristicInfo['mazeDistances']:
+                maze_dist = mazeDistance(pos1, pos2, problem.startingGameState)
+                heuristicInfo['mazeDistances'][key] = maze_dist
+                heuristicInfo['mazeDistances'][(pos2, pos1)] = maze_dist  # Symmetric
+            distances[key] = heuristicInfo['mazeDistances'][key]
 
+    # Kruskal's algorithm to compute the MST cost over food positions
+    parents = {node: node for node in food_list}
+
+    def find(u):
+        while parents[u] != u:
+            parents[u] = parents[parents[u]]  # Path compression
+            u = parents[u]
+        return u
+
+    def union(u, v):
+        parent_u = find(u)
+        parent_v = find(v)
+        if parent_u != parent_v:
+            parents[parent_v] = parent_u
+            return True
+        return False
+
+    # Create a priority queue of edges sorted by weight
+    edge_queue = PriorityQueue()
+    for (u, v), weight in distances.items():
+        edge_queue.push((u, v, weight), weight)
+
+    mst_cost = 0
+    while not edge_queue.isEmpty():
+        u, v, weight = edge_queue.pop()
+        if union(u, v):
+            mst_cost += weight
+
+    # The heuristic is the minimal distance to the closest food plus the MST cost
+    total_cost = min_pacman_to_food + mst_cost
+    return total_cost
 
 class ClosestDotSearchAgent(SearchAgent):
     "Search for all food using a sequence of searches"
