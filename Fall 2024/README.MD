@@ -9,6 +9,6 @@ This folder contains the solutions for the Projects 0,1,2,3,4,5,6 on the Course 
 
 The scores are:
 - Project 0: 3/3
-- Project 1: 25/25
+- Project 1: 26/25
 - Project 2: 25/25
 - Project 3: 21/21
