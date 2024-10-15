@@ -196,26 +196,30 @@ def inferenceByVariableEliminationWithCallTracking(callTrackingList=None):
             eliminationOrder = sorted(list(eliminationVariables))
             
         "*** YOUR CODE HERE ***"
-        factors = bayesNet.getAllCPTsWithEvidence(evidenceDict)
+        currentFactorsList = bayesNet.getAllCPTsWithEvidence(evidenceDict)
 
-        for variable in eliminationOrder:
-            # Round up the factors where our variable is hanging out
-            factorsWithVariable = [f for f in factors if variable in f.variables()]
-            if factorsWithVariable:
-                # Get these factors to join up
-                bigFactor = joinFactors(factorsWithVariable)
-                # Only show the variable the door if it's not the only unconditioned one
-                if len(bigFactor.unconditionedVariables()) > 1:
-                    trimmedFactor = eliminate(bigFactor, variable)
-                    factors = [f for f in factors if variable not in f.variables()] + [trimmedFactor]
-                else:
-                    # If it's the only unconditioned variable, just update the factors list without eliminating
-                    factors = [f for f in factors if variable not in f.variables()] + [bigFactor]
+        # Iterate over each variable in the elimination order
+        for elimVar in eliminationOrder:
+            # Join all factors containing elimVar
+            currentFactorsList, joinedFactor = joinFactorsByVariable(currentFactorsList, elimVar)
+            if len(joinedFactor.unconditionedVariables()) > 1:
+                # Eliminate elimVar from the joined factor
+                eliminatedFactor = eliminate(joinedFactor, elimVar)
+                currentFactorsList.append(eliminatedFactor)
+            else:
+                # Discard the factor if it has only one unconditioned variable
+                pass
 
-        # Join any leftover factors and normalize
-        finalFactor = joinFactors(factors)
-        normalizedFactor = normalize(finalFactor)
-        return normalizedFactor
+        # Multiply all remaining factors
+        if len(currentFactorsList) > 0:
+            fullJoint = joinFactors(currentFactorsList)
+        else:
+            # If no factors remain, return an empty factor (not typical in practice)
+            return None
+
+        # Normalize the result to get the conditional probability
+        queryConditionedOnEvidence = normalize(fullJoint)
+        return queryConditionedOnEvidence
         "*** END YOUR CODE HERE ***"
         
     return inferenceByVariableElimination
