@@ -113,20 +113,25 @@ def findModel(sentence: Expr) -> Dict[Expr, bool]:
     cnf_sentence = to_cnf(sentence)
     return pycoSAT(cnf_sentence)
 
-def findModelUnderstandingCheck() -> Dict[Expr, bool]:
+def findModelUnderstandingCheck() -> dict:
     """Returns the result of findModel(Expr('a')) if lower cased expressions were allowed.
     You should not use findModel or Expr in this method.
     """
     "*** BEGIN YOUR CODE HERE ***"
-   # Creating an uppercase 'A' expression because 'a' isn't allowed
-    a_upper = Expr('A')
-    
-    # Simulate the output manually as if lowercase 'a' were allowed
-    # Convert output to string as expected by test cases
-    simulated_result = str({a_upper: True}).replace('A', 'a')
-    
-    # This is the manually formatted string to match test expectations
-    return simulated_result
+    class MockExpr:
+        def __init__(self, name):
+            self.name = name
+
+        def __repr__(self):
+            return self.name
+
+        def __hash__(self):
+            return hash(self.name)
+
+        def __eq__(self, other):
+            return isinstance(other, MockExpr) and self.name == other.name
+
+    return {MockExpr('a'): True}
     "*** END YOUR CODE HERE ***"
 
 def entails(premise: Expr, conclusion: Expr) -> bool:
@@ -310,6 +315,27 @@ def pacphysicsAxioms(t: int, all_coords: List[Tuple], non_outer_wall_coords: Lis
     pacphysics_sentences = []
 
     "*** BEGIN YOUR CODE HERE ***"
+    # 1. For all (x, y) in all_coords: If a wall is at (x, y), then Pacman is not at (x, y)
+    for (x, y) in all_coords:
+        wall_at_xy = PropSymbolExpr(wall_str, x, y)
+        pacman_at_xy = PropSymbolExpr(pacman_str, x, y, time=t)
+        pacphysics_sentences.append(wall_at_xy >> ~pacman_at_xy)
+
+    # 2. Pacman is at exactly one of the squares at timestep t
+    pacman_at_one_square = [PropSymbolExpr(pacman_str, x, y, time=t) for (x, y) in non_outer_wall_coords]
+    pacphysics_sentences.append(exactlyOne(pacman_at_one_square))
+
+    # 3. Pacman takes exactly one action at timestep t
+    actions_at_t = [PropSymbolExpr(action, time=t) for action in DIRECTIONS]
+    pacphysics_sentences.append(exactlyOne(actions_at_t))
+
+    # 4. Add the result of calling sensorModel, if provided
+    if sensorModel:
+        pacphysics_sentences.append(sensorModel(t, non_outer_wall_coords))
+
+    # 5. Add the result of calling successorAxioms, if provided
+    if successorAxioms and walls_grid is not None:
+        pacphysics_sentences.append(successorAxioms(t, walls_grid, non_outer_wall_coords))
     "*** END YOUR CODE HERE ***"
 
     return conjoin(pacphysics_sentences)
@@ -477,7 +503,6 @@ def localization(problem, agent) -> Generator:
     KB = []
 
     "*** BEGIN YOUR CODE HERE ***"
-    util.raiseNotDefined()
 
     for t in range(agent.num_timesteps):
         "*** END YOUR CODE HERE ***"
@@ -509,7 +534,6 @@ def mapping(problem, agent) -> Generator:
     KB.append(conjoin(outer_wall_sent))
 
     "*** BEGIN YOUR CODE HERE ***"
-    util.raiseNotDefined()
 
     for t in range(agent.num_timesteps):
         "*** END YOUR CODE HERE ***"
