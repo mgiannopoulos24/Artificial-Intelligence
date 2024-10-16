@@ -244,6 +244,7 @@ def pacmanSuccessorAxiomSingle(x: int, y: int, time: int, walls_grid: List[List[
         return None
     
     "*** BEGIN YOUR CODE HERE ***"
+    # Pacman is at (x, y) at time now if and only if he was at a neighboring cell at time last and took the corresponding action
     return PropSymbolExpr(pacman_str, x, y, time=now) % disjoin(possible_causes)
     "*** END YOUR CODE HERE ***"
 
@@ -315,26 +316,27 @@ def pacphysicsAxioms(t: int, all_coords: List[Tuple], non_outer_wall_coords: Lis
     pacphysics_sentences = []
 
     "*** BEGIN YOUR CODE HERE ***"
-    # 1. For all (x, y) in all_coords: If a wall is at (x, y), then Pacman is not at (x, y)
+    # Pacman cannot be at a wall position at time t
     for (x, y) in all_coords:
         wall_at_xy = PropSymbolExpr(wall_str, x, y)
-        pacman_at_xy = PropSymbolExpr(pacman_str, x, y, time=t)
-        pacphysics_sentences.append(wall_at_xy >> ~pacman_at_xy)
+        pacman_at_xy_t = PropSymbolExpr(pacman_str, x, y, time=t)
+        pacphysics_sentences.append(wall_at_xy >> ~pacman_at_xy_t)
 
-    # 2. Pacman is at exactly one of the squares at timestep t
-    pacman_at_one_square = [PropSymbolExpr(pacman_str, x, y, time=t) for (x, y) in non_outer_wall_coords]
-    pacphysics_sentences.append(exactlyOne(pacman_at_one_square))
+    # Pacman is at exactly one of the non-wall positions at time t
+    pacman_at_positions = [PropSymbolExpr(pacman_str, x, y, time=t)
+                           for (x, y) in non_outer_wall_coords]
+    pacphysics_sentences.append(exactlyOne(pacman_at_positions))
 
-    # 3. Pacman takes exactly one action at timestep t
-    actions_at_t = [PropSymbolExpr(action, time=t) for action in DIRECTIONS]
-    pacphysics_sentences.append(exactlyOne(actions_at_t))
+    # Pacman takes exactly one action at time t
+    pacman_actions = [PropSymbolExpr(action, time=t) for action in DIRECTIONS]
+    pacphysics_sentences.append(exactlyOne(pacman_actions))
 
-    # 4. Add the result of calling sensorModel, if provided
-    if sensorModel:
+    # Sensor model axioms (if provided)
+    if sensorModel is not None:
         pacphysics_sentences.append(sensorModel(t, non_outer_wall_coords))
 
-    # 5. Add the result of calling successorAxioms, if provided
-    if successorAxioms and walls_grid is not None:
+    # Successor state axioms (if provided and t > 0)
+    if t > 0 and successorAxioms is not None:
         pacphysics_sentences.append(successorAxioms(t, walls_grid, non_outer_wall_coords))
     "*** END YOUR CODE HERE ***"
 
@@ -369,6 +371,36 @@ def checkLocationSatisfiability(x1_y1: Tuple[int, int], x0_y0: Tuple[int, int], 
     KB.append(conjoin(map_sent))
 
     "*** BEGIN YOUR CODE HERE ***"
+    # Add pacphysics axioms for time 0 and 1
+    for t in [0, 1]:
+        if t == 0:
+            axioms_t = pacphysicsAxioms(t, all_coords, non_outer_wall_coords,
+                                        walls_grid=walls_grid, sensorModel=None,
+                                        successorAxioms=None)
+        else:
+            axioms_t = pacphysicsAxioms(t, all_coords, non_outer_wall_coords,
+                                        walls_grid=walls_grid, sensorModel=None,
+                                        successorAxioms=allLegalSuccessorAxioms)
+        KB.append(axioms_t)
+
+    # Pacman's initial location at time 0
+    KB.append(PropSymbolExpr(pacman_str, x0, y0, time=0))
+
+    # Pacman's actions at times 0 and 1
+    KB.append(PropSymbolExpr(action0, time=0))
+    KB.append(PropSymbolExpr(action1, time=1))
+
+    # Build the knowledge base
+    kb_conjoined = conjoin(KB)
+
+    # Query for Pacman being at (x1, y1) at time 1
+    pacman_at_x1_y1_t1 = PropSymbolExpr(pacman_str, x1, y1, time=1)
+    model1 = findModel(kb_conjoined & pacman_at_x1_y1_t1)
+
+    # Query for Pacman not being at (x1, y1) at time 1
+    model2 = findModel(kb_conjoined & ~pacman_at_x1_y1_t1)
+
+    return (model1, model2)
     "*** END YOUR CODE HERE ***"
 
 #______________________________________________________________________________
@@ -503,10 +535,48 @@ def localization(problem, agent) -> Generator:
     KB = []
 
     "*** BEGIN YOUR CODE HERE ***"
+    # Add where the walls are
+    for (x, y) in walls_list:
+        KB.append(PropSymbolExpr(wall_str, x, y))
+    # Add where the walls aren't
+    for (x, y) in all_coords:
+        if (x, y) not in walls_list:
+            KB.append(~PropSymbolExpr(wall_str, x, y))
+
+    # Initial position constraints: Pacman is at exactly one position at time 0
+    KB.append(exactlyOne([PropSymbolExpr(pacman_str, x, y, time=0) for (x, y) in non_outer_wall_coords]))
 
     for t in range(agent.num_timesteps):
-        "*** END YOUR CODE HERE ***"
+        # Add pacphysics axioms
+        KB.append(pacphysicsAxioms(t, all_coords, non_outer_wall_coords, walls_grid))
+        # Add action sentence
+        action_t = agent.actions[t]
+        KB.append(PropSymbolExpr(action_t, time=t))
+        # Add sensor axioms
+        KB.append(sensorAxioms(t, non_outer_wall_coords))
+        # Get percepts
+        percepts = agent.getPercepts()
+        # Add percept sentences
+        KB.append(fourBitPerceptRules(t, percepts))
+
+        # Add successor state axioms for Pacman's position (for t > 0)
+        if t > 0:
+            for (x, y) in non_outer_wall_coords:
+                KB.append(pacmanSuccessorAxiomSingle(x, y, t, walls_grid))
+
+        # Determine possible locations
+        possible_locations = []
+        for (x, y) in non_outer_wall_coords:
+            pacman_at_xy_t = PropSymbolExpr(pacman_str, x, y, time=t)
+            model = findModel(conjoin(KB + [pacman_at_xy_t]))
+            if model:
+                possible_locations.append((x, y))
+        # Move to next state
+        agent.moveToNextState(action_t)
+        # Yield possible locations
         yield possible_locations
+    "*** END YOUR CODE HERE ***"
+    
 
 #______________________________________________________________________________
 # QUESTION 7
