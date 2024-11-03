@@ -481,7 +481,7 @@ class InferenceModule:
         Return the probability P(noisyDistance | pacmanPosition, ghostPosition).
         """
         "*** YOUR CODE HERE ***"
-         # Check the special case where the ghost is in jail.
+        # Check the special case where the ghost is in jail.
         if ghostPosition == jailPosition:
             # If the observation is None and the ghost is in jail, return 1.
             # Otherwise, return 0 because the distance sensor should deterministically return None.

@@ -149,7 +149,7 @@ class GreedyBustersAgent(BustersAgent):
             [beliefs for i, beliefs in enumerate(self.ghostBeliefs)
              if livingGhosts[i+1]]
         "*** YOUR CODE HERE ***"
-         # Find the most likely position for each living ghost
+        # Find the most likely position for each living ghost
         mostLikelyGhostPositions = []
         for ghostPositionDistribution in livingGhostPositionDistributions:
             mostLikelyPosition = ghostPositionDistribution.argMax()
