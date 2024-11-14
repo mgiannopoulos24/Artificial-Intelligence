@@ -604,8 +604,36 @@ def mapping(problem, agent) -> Generator:
     KB.append(conjoin(outer_wall_sent))
 
     "*** BEGIN YOUR CODE HERE ***"
+    # Add initial Pacman position to KB
+    KB.append(PropSymbolExpr(pacman_str, pac_x_0, pac_y_0, time=0))
 
     for t in range(agent.num_timesteps):
+        # Add pacphysics, action, and percept information to KB
+        KB.append(pacphysicsAxioms(t, all_coords, non_outer_wall_coords, walls_grid=known_map, 
+                                 sensorModel=sensorAxioms, successorAxioms=SLAMSuccessorAxioms))
+        
+        # Add action information
+        action_t = agent.actions[t]
+        KB.append(PropSymbolExpr(action_t, time=t))
+        
+        # Add percept information
+        percepts = agent.getPercepts()
+        KB.append(fourBitPerceptRules(t, percepts))
+
+        # Find provable wall locations and update known_map
+        for x, y in non_outer_wall_coords:
+            # Check if wall at (x,y)
+            wall_xy = PropSymbolExpr(wall_str, x, y)
+            
+            # If we can prove there is a wall
+            if entails(conjoin(KB), wall_xy):
+                known_map[x][y] = 1
+            # If we can prove there is not a wall
+            elif entails(conjoin(KB), ~wall_xy):
+                known_map[x][y] = 0
+
+        # Call agent.moveToNextState on the current agent action at timestep t
+        agent.moveToNextState(action_t)
         "*** END YOUR CODE HERE ***"
         yield known_map
 
@@ -635,9 +663,43 @@ def slam(problem, agent) -> Generator:
     KB.append(conjoin(outer_wall_sent))
 
     "*** BEGIN YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    # Add initial Pacman position to KB
+    KB.append(PropSymbolExpr(pacman_str, pac_x_0, pac_y_0, time=0))
 
     for t in range(agent.num_timesteps):
+        # Add pacphysics, action, and percept information to KB
+        KB.append(pacphysicsAxioms(t, all_coords, non_outer_wall_coords, walls_grid=known_map,
+                                 sensorModel=SLAMSensorAxioms, successorAxioms=SLAMSuccessorAxioms))
+        
+        # Add action information
+        action_t = agent.actions[t]
+        KB.append(PropSymbolExpr(action_t, time=t))
+        
+        # Add percept information
+        percepts = agent.getPercepts()
+        KB.append(numAdjWallsPerceptRules(t, percepts))
+
+        # Find provable wall locations and update known_map
+        for x, y in non_outer_wall_coords:
+            # Check if wall at (x,y)
+            wall_xy = PropSymbolExpr(wall_str, x, y)
+            
+            # If we can prove there is a wall
+            if entails(conjoin(KB), wall_xy):
+                known_map[x][y] = 1
+            # If we can prove there is not a wall
+            elif entails(conjoin(KB), ~wall_xy):
+                known_map[x][y] = 0
+
+        # Find possible pacman locations
+        possible_locations = []
+        for x, y in non_outer_wall_coords:
+            pacman_at_xy_t = PropSymbolExpr(pacman_str, x, y, time=t)
+            if findModel(conjoin(KB + [pacman_at_xy_t])):
+                possible_locations.append((x, y))
+
+        # Call agent.moveToNextState on the current agent action at timestep t
+        agent.moveToNextState(action_t)
         "*** END YOUR CODE HERE ***"
         yield (known_map, possible_locations)
 
