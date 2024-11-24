@@ -173,7 +173,8 @@ class RegressionModel(Module):
         """
         "*** YOUR CODE HERE ***"
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
-        optimizer = SGD(self.parameters(), lr=learning_rate)  # Use Stochastic Gradient Descent
+        optimizer = Adam(self.parameters(), lr=learning_rate)  # Use Adam optimizer
+
         for epoch in range(max_epochs):
             epoch_loss = 0.0
             for sample in dataloader:
@@ -479,5 +480,3 @@ class Attention(Module):
         B, T, C = input.size()
 
         """YOUR CODE HERE"""
-
-     
