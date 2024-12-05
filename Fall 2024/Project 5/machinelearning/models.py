@@ -106,8 +106,6 @@ class PerceptronModel(Module):
                 if errors == 0:
                     break
 
-
-
 class RegressionModel(Module):
     """
     A neural network model for approximating a function that maps from real
@@ -193,15 +191,7 @@ class RegressionModel(Module):
             if epoch_loss <= target_loss:
                 print("Target loss achieved. Stopping training.")
                 break
-
-            
-
-
-
-
-
-
-
+         
 class DigitClassificationModel(Module):
     """
     A model for handwritten digit classification using the MNIST dataset.
@@ -222,9 +212,9 @@ class DigitClassificationModel(Module):
         input_size = 28 * 28
         output_size = 10
         "*** YOUR CODE HERE ***"
-
-
-
+        self.hidden_layer1 = Linear(input_size, 128)
+        self.hidden_layer2 = Linear(128, 64)
+        self.output_layer = Linear(64, output_size)
 
     def run(self, x):
         """
@@ -241,8 +231,9 @@ class DigitClassificationModel(Module):
                 (also called logits)
         """
         """ YOUR CODE HERE """
-
- 
+        x = torch.relu(self.hidden_layer1(x))
+        x = torch.relu(self.hidden_layer2(x))
+        return self.output_layer(x)
 
     def get_loss(self, x, y):
         """
@@ -258,17 +249,35 @@ class DigitClassificationModel(Module):
         Returns: a loss tensor
         """
         """ YOUR CODE HERE """
+        predictions = self.run(x)
+        return cross_entropy(predictions, y)
 
-    
-        
-
-    def train(self, dataset):
+    def train(self, dataset, batch_size=32, learning_rate=0.001, max_epochs=20, target_accuracy=97.5):
         """
         Trains the model.
         """
         """ YOUR CODE HERE """
+        dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+        optimizer = Adam(self.parameters(), lr=learning_rate)
 
+        for epoch in range(max_epochs):
+            epoch_loss = 0.0
+            for sample in dataloader:
+                x, y = sample['x'], sample['label']
+                optimizer.zero_grad()
+                loss = self.get_loss(x, y)
+                loss.backward()
+                optimizer.step()
+                epoch_loss += loss.item()
+            
+            epoch_loss /= len(dataloader)
+            # Correcting the validation accuracy call
+            validation_accuracy = dataset.get_validation_accuracy()
+            print(f"Epoch {epoch + 1}: Loss = {epoch_loss}, Validation Accuracy = {validation_accuracy}%")
 
+            if validation_accuracy >= target_accuracy:
+                print("Target accuracy achieved. Stopping training.")
+                break
 
 class LanguageIDModel(Module):
     """
@@ -335,8 +344,7 @@ class LanguageIDModel(Module):
             y: a node with shape (batch_size x 5)
         Returns: a loss node
         """
-        "*** YOUR CODE HERE ***"
-        
+        "*** YOUR CODE HERE ***" 
 
     def train(self, dataset):
         """
@@ -352,8 +360,7 @@ class LanguageIDModel(Module):
 
         For more information, look at the pytorch documentation of torch.movedim()
         """
-        "*** YOUR CODE HERE ***"
-
+        "*** YOUR CODE HERE ***"   
         
 
 def Convolve(input: tensor, weight: tensor):
@@ -369,14 +376,21 @@ def Convolve(input: tensor, weight: tensor):
 
     This returns a subtensor who's first element is tensor[y,x] and has height 'height, and width 'width'
     """
-    input_tensor_dimensions = input.shape
-    weight_dimensions = weight.shape
-    Output_Tensor = tensor(())
     "*** YOUR CODE HERE ***"
+    input_height, input_width = input.shape
+    weight_height, weight_width = weight.shape
+    output_height = input_height - weight_height + 1
+    output_width = input_width - weight_width + 1
+    output = torch.zeros((output_height, output_width))
 
+    for i in range(output_height):
+        for j in range(output_width):
+            region = input[i:i+weight_height, j:j+weight_width]
+            output[i, j] = (region * weight).sum()
+
+    return output
     
     "*** End Code ***"
-    return Output_Tensor
 
 
 
@@ -400,6 +414,8 @@ class DigitConvolutionalModel(Module):
 
         self.convolution_weights = Parameter(ones((3, 3)))
         """ YOUR CODE HERE """
+        self.hidden_layer = Linear(26 * 26, 128)  # 26x26 is the output size after applying 3x3 convolution on 28x28 input
+        self.output_layer = Linear(128, output_size)
 
 
 
@@ -416,6 +432,8 @@ class DigitConvolutionalModel(Module):
         x = stack(list(map(lambda sample: Convolve(sample, self.convolution_weights), x)))
         x = x.flatten(start_dim=1)
         """ YOUR CODE HERE """
+        x = relu(self.hidden_layer(x))
+        return self.output_layer(x)
 
 
     def get_loss(self, x, y):
@@ -432,6 +450,8 @@ class DigitConvolutionalModel(Module):
         Returns: a loss tensor
         """
         """ YOUR CODE HERE """
+        predictions = self.forward(x)
+        return cross_entropy(predictions, y)
 
      
         
@@ -441,6 +461,21 @@ class DigitConvolutionalModel(Module):
         Trains the model.
         """
         """ YOUR CODE HERE """
+        dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
+        optimizer = Adam(self.parameters(), lr=0.001)
+
+        for epoch in range(20):
+            epoch_loss = 0.0
+            for sample in dataloader:
+                x, y = sample['x'], sample['label']
+                optimizer.zero_grad()
+                loss = self.get_loss(x, y)
+                loss.backward()
+                optimizer.step()
+                epoch_loss += loss.item()
+
+            epoch_loss /= len(dataloader)
+            print(f"Epoch {epoch + 1}: Loss = {epoch_loss}")
 
 
 
