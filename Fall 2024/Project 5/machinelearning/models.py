@@ -2,6 +2,9 @@ from torch import no_grad, stack
 from torch.utils.data import DataLoader
 from torch.nn import Module, Linear, MSELoss, Tanh
 from torch.optim import Adam
+import torch.nn.functional as F
+import torch.nn as nn
+import numpy as np
 
 
 """
@@ -292,12 +295,21 @@ class LanguageIDModel(Module):
         # combined alphabets of the five languages contain a total of 47 unique
         # characters.
         # You can refer to self.num_chars or len(self.languages) in your code
+        super(LanguageIDModel, self).__init__()
+        
         self.num_chars = 47
         self.languages = ["English", "Spanish", "Finnish", "Dutch", "Polish"]
-        super(LanguageIDModel, self).__init__()
+        self.num_languages = len(self.languages)
+        
+        
         "*** YOUR CODE HERE ***"
+        self.hidden_size = 128
 
-
+        # Layers
+        self.embedding = nn.Linear(self.num_chars, self.hidden_size)
+        self.gru = nn.GRU(input_size=self.hidden_size, hidden_size=self.hidden_size, batch_first=False)
+        self.output_layer = nn.Linear(self.hidden_size, self.num_languages)
+    
     def run(self, xs):
         """
         Runs the model for a batch of examples.
@@ -328,6 +340,16 @@ class LanguageIDModel(Module):
                 (also called logits)
         """
         "*** YOUR CODE HERE ***"
+        batch_size = xs[0].shape[0]
+        h = torch.zeros(1, batch_size, self.hidden_size, device=xs[0].device)  # Initialize hidden state
+
+        for x in xs:
+            x_embedded = self.embedding(x).unsqueeze(0)  # Add sequence dimension
+            out, h = self.gru(x_embedded, h)
+
+        logits = self.output_layer(h.squeeze(0))  # (batch_size x num_languages)
+        return logits
+        
 
     
     def get_loss(self, xs, y):
@@ -344,7 +366,11 @@ class LanguageIDModel(Module):
             y: a node with shape (batch_size x 5)
         Returns: a loss node
         """
-        "*** YOUR CODE HERE ***" 
+        "*** YOUR CODE HERE ***"
+        logits = self.run(xs)  # Forward pass
+        loss = F.cross_entropy(logits, y.argmax(dim=1))  # Cross-entropy loss
+        return loss
+        
 
     def train(self, dataset):
         """
@@ -360,8 +386,7 @@ class LanguageIDModel(Module):
 
         For more information, look at the pytorch documentation of torch.movedim()
         """
-        "*** YOUR CODE HERE ***"   
-        
+        "*** YOUR CODE HERE ***"
 
 def Convolve(input: tensor, weight: tensor):
     """
@@ -515,3 +540,22 @@ class Attention(Module):
         B, T, C = input.size()
 
         """YOUR CODE HERE"""
+        # Generate Q, K, and V matrices using the linear layers
+        Q = self.q_layer(input)  # (B, T, C)
+        K = self.k_layer(input)  # (B, T, C)
+        V = self.v_layer(input)  # (B, T, C)
+
+        # Compute (KQ^T) / sqrt(d_k)
+        d_k = self.layer_size
+        scores = torch.matmul(K, Q.transpose(-2, -1)) / torch.sqrt(torch.tensor(d_k, dtype=torch.float32))  # (B, T, T)
+
+        # Apply the causal mask
+        scores = scores.masked_fill(self.mask[:, :, :T, :T] == 0, float('-inf'))
+
+        # Apply softmax along the last dimension
+        attention_weights = F.softmax(scores, dim=-1)  # (B, T, T)
+
+        # Multiply the attention weights with V
+        output = torch.matmul(attention_weights, V)  # (B, T, C)
+
+        return output
