@@ -1,7 +1,11 @@
 from torch import no_grad, stack
 from torch.utils.data import DataLoader
-from torch.nn import Module, MSELoss, RNN
-import torch
+from torch.nn import Module, Linear, MSELoss, Tanh
+from torch.optim import Adam
+import torch.nn.functional as F
+import torch.nn as nn
+from torch.nn.init import xavier_uniform_
+import numpy as np
 
 
 """
@@ -9,9 +13,10 @@ Functions you should use.
 Please avoid importing any other torch functions or modules.
 Your code will not pass if the gradescope autograder detects any changed imports
 """
+import torch
 from torch.nn import Parameter, Linear
-from torch import optim, tensor, tensordot, empty, ones
-from torch.nn.functional import cross_entropy, relu, mse_loss
+from torch import optim, tensor, tensordot, ones, matmul
+from torch.nn.functional import cross_entropy, relu, mse_loss, softmax
 from torch import movedim
 
 
@@ -107,13 +112,15 @@ class RegressionModel(Module):
         # Initialize your model parameters here
         "*** YOUR CODE HERE ***"
         super().__init__()
-        # Increase the number of neurons and add an additional hidden layer
-        self.fc1 = torch.nn.Linear(1, 128)  # Increase neurons in the first layer
-        self.fc2 = torch.nn.Linear(128, 128) # Add more neurons in the second layer
-        self.fc3 = torch.nn.Linear(128, 64)  # Additional hidden layer with fewer neurons
-        self.fc4 = torch.nn.Linear(64, 1)    # Output layer
+        self.hidden_layer1 = Linear(1, 128)  # First hidden layer with 128 units
+        self.hidden_layer2 = Linear(128, 64)  # Second hidden layer with 64 units
+        self.output_layer = Linear(64, 1)  # Output layer
+        self.activation = Tanh()  # Use Tanh for better approximation of periodic functions
 
-
+        # Initialize weights
+        xavier_uniform_(self.hidden_layer1.weight)
+        xavier_uniform_(self.hidden_layer2.weight)
+        xavier_uniform_(self.output_layer.weight)
 
     def forward(self, x):
         """
@@ -125,11 +132,9 @@ class RegressionModel(Module):
             A node with shape (batch_size x 1) containing predicted y-values
         """
         "*** YOUR CODE HERE ***"
-        x = torch.relu(self.fc1(x))
-        x = torch.relu(self.fc2(x))
-        x = torch.relu(self.fc3(x))  # Extra hidden layer
-        x = self.fc4(x)
-        return x
+        x = self.activation(self.hidden_layer1(x))  # First hidden layer
+        x = self.activation(self.hidden_layer2(x))  # Second hidden layer
+        return self.output_layer(x)  # Output layer
 
     
     def get_loss(self, x, y):
@@ -143,14 +148,13 @@ class RegressionModel(Module):
         Returns: a tensor of size 1 containing the loss
         """
         "*** YOUR CODE HERE ***"
-        criterion = MSELoss()  # Mean Squared Error Loss for regression
-        prediction = self.forward(x)  # Get model predictions
-        loss = criterion(prediction, y)  # Compute the MSE loss between prediction and true y
-        return loss
+        predictions = self.forward(x)  # Get model predictions
+        loss_fn = MSELoss()  # Mean squared error loss
+        return loss_fn(predictions, y)  # Compute and return the loss
  
   
 
-    def train(self, dataset):
+    def train(self, dataset, batch_size=32, learning_rate=0.01, max_epochs=1000, target_loss=0.02):
         """
         Trains the model.
 
@@ -165,31 +169,26 @@ class RegressionModel(Module):
             
         """
         "*** YOUR CODE HERE ***"
-        # Hyperparameters
-        epochs = 3000  # Increase the number of epochs
-        learning_rate = 0.001  # Reduce the learning rate
-        batch_size = 16
-
-        # Create DataLoader
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+        optimizer = Adam(self.parameters(), lr=learning_rate)  # Use Adam optimizer
 
-        # Optimizer (Adam with a smaller learning rate)
-        optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
+        for epoch in range(max_epochs):
+            epoch_loss = 0.0
+            for sample in dataloader:
+                x, y = sample['x'], sample['label']
+                optimizer.zero_grad()  # Clear gradients
+                loss = self.get_loss(x, y)  # Compute loss
+                loss.backward()  # Backpropagate
+                optimizer.step()  # Update parameters
+                epoch_loss += loss.item()
+            
+            # Calculate average loss for the epoch
+            epoch_loss /= len(dataloader)
+            print(f"Epoch {epoch + 1}: Loss = {epoch_loss}")
 
-        for epoch in range(epochs):
-            total_loss = 0
-            for batch in dataloader:
-                x, y = batch['x'], batch['label']
-
-                optimizer.zero_grad()  # Clear gradients from the last step
-                loss = self.get_loss(x, y)  # Compute the loss
-                loss.backward()  # Backpropagation
-                optimizer.step()  # Update the model parameters
-
-                total_loss += loss.item()  # Track the total loss for the epoch
-
-            # Stop early if the loss is sufficiently small
-            if total_loss / len(dataloader) < 0.02:
+            # Stop training if target loss is achieved
+            if epoch_loss <= target_loss:
+                print("Target loss achieved. Stopping training.")
                 break
 
 class DigitClassificationModel(Module):
@@ -313,7 +312,15 @@ class LanguageIDModel(Module):
         self.num_chars = 47
         self.languages = ["English", "Spanish", "Finnish", "Dutch", "Polish"]
         super(LanguageIDModel, self).__init__()
+
+        self.num_languages = len(self.languages)
         "*** YOUR CODE HERE ***"
+        self.hidden_size = 128
+
+        # Layers
+        self.embedding = nn.Linear(self.num_chars, self.hidden_size)
+        self.gru = nn.GRU(input_size=self.hidden_size, hidden_size=self.hidden_size, batch_first=False)
+        self.output_layer = nn.Linear(self.hidden_size, self.num_languages)
 
 
     def run(self, xs):
@@ -346,6 +353,15 @@ class LanguageIDModel(Module):
                 (also called logits)
         """
         "*** YOUR CODE HERE ***"
+        batch_size = xs[0].shape[0]
+        h = torch.zeros(1, batch_size, self.hidden_size, device=xs[0].device)  # Initialize hidden state
+
+        for x in xs:
+            x_embedded = self.embedding(x).unsqueeze(0)  # Add sequence dimension
+            out, h = self.gru(x_embedded, h)
+
+        logits = self.output_layer(h.squeeze(0))  # (batch_size x num_languages)
+        return logits
         
 
     
@@ -364,6 +380,9 @@ class LanguageIDModel(Module):
         Returns: a loss node
         """
         "*** YOUR CODE HERE ***"
+        logits = self.run(xs)  # Forward pass
+        loss = F.cross_entropy(logits, y.argmax(dim=1))  # Cross-entropy loss
+        return loss
 
 
     def train(self, dataset):
@@ -381,6 +400,30 @@ class LanguageIDModel(Module):
         For more information, look at the pytorch documentation of torch.movedim()
         """
         "*** YOUR CODE HERE ***"
+        dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
+        optimizer = Adam(self.parameters(), lr=0.001)
+
+        for epoch in range(20):
+            epoch_loss = 0.0
+            for batch in dataloader:
+                x = movedim(batch['x'], 1, 0)  # Transpose batch to (seq_len, batch_size, num_chars)
+                y = batch['label']
+                
+                optimizer.zero_grad()
+                loss = self.get_loss(x, y)
+                loss.backward()
+                optimizer.step()
+                epoch_loss += loss.item()
+            
+            # Calculate average loss and validation accuracy for this epoch
+            epoch_loss /= len(dataloader)
+            validation_accuracy = dataset.get_validation_accuracy()
+            print(f"Epoch {epoch + 1}: Loss = {epoch_loss:.4f}, Validation Accuracy = {validation_accuracy:.2%}")
+            
+            # Early stopping if validation accuracy is high enough
+            if validation_accuracy >= 0.85:
+                print("Target accuracy achieved. Stopping training.")
+                break
 
         
 
@@ -397,11 +440,19 @@ def Convolve(input: tensor, weight: tensor):
 
     This returns a subtensor who's first element is tensor[y,x] and has height 'height, and width 'width'
     """
-    input_tensor_dimensions = input.shape
-    weight_dimensions = weight.shape
-    Output_Tensor = tensor(())
     "*** YOUR CODE HERE ***"
+    input_height, input_width = input.shape
+    weight_height, weight_width = weight.shape
+    output_height = input_height - weight_height + 1
+    output_width = input_width - weight_width + 1
+    output = torch.zeros((output_height, output_width))
 
+    for i in range(output_height):
+        for j in range(output_width):
+            region = input[i:i+weight_height, j:j+weight_width]
+            output[i, j] = (region * weight).sum()
+
+    return output
     
     "*** End Code ***"
     return Output_Tensor
@@ -427,6 +478,8 @@ class DigitConvolutionalModel(Module):
 
         self.convolution_weights = Parameter(ones((3, 3)))
         """ YOUR CODE HERE """
+        self.hidden_layer = Linear(26 * 26, 128)  # 26x26 is the output size after applying 3x3 convolution on 28x28 input
+        self.output_layer = Linear(128, output_size)
 
 
     def run(self, x):
@@ -438,6 +491,8 @@ class DigitConvolutionalModel(Module):
         x = stack(list(map(lambda sample: Convolve(sample, self.convolution_weights), x)))
         x = x.flatten(start_dim=1)
         """ YOUR CODE HERE """
+        x = relu(self.hidden_layer(x))
+        return self.output_layer(x)
 
  
 
@@ -455,6 +510,8 @@ class DigitConvolutionalModel(Module):
         Returns: a loss tensor
         """
         """ YOUR CODE HERE """
+        predictions = self.forward(x)
+        return cross_entropy(predictions, y)
 
         
 
@@ -463,4 +520,19 @@ class DigitConvolutionalModel(Module):
         Trains the model.
         """
         """ YOUR CODE HERE """
+        dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
+        optimizer = Adam(self.parameters(), lr=0.001)
+
+        for epoch in range(20):
+            epoch_loss = 0.0
+            for sample in dataloader:
+                x, y = sample['x'], sample['label']
+                optimizer.zero_grad()
+                loss = self.get_loss(x, y)
+                loss.backward()
+                optimizer.step()
+                epoch_loss += loss.item()
+
+            epoch_loss /= len(dataloader)
+            print(f"Epoch {epoch + 1}: Loss = {epoch_loss}")
  
