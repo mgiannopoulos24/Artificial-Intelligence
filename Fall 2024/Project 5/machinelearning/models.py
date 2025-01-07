@@ -4,6 +4,7 @@ from torch.nn import Module, Linear, MSELoss, Tanh
 from torch.optim import Adam
 import torch.nn.functional as F
 import torch.nn as nn
+from torch.nn.init import xavier_uniform_
 import numpy as np
 
 
@@ -124,7 +125,10 @@ class RegressionModel(Module):
         self.output_layer = Linear(64, 1)  # Output layer
         self.activation = Tanh()  # Use Tanh for better approximation of periodic functions
 
-
+        # Initialize weights
+        xavier_uniform_(self.hidden_layer1.weight)
+        xavier_uniform_(self.hidden_layer2.weight)
+        xavier_uniform_(self.output_layer.weight)
 
     def forward(self, x):
         """
@@ -387,6 +391,30 @@ class LanguageIDModel(Module):
         For more information, look at the pytorch documentation of torch.movedim()
         """
         "*** YOUR CODE HERE ***"
+        dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
+        optimizer = Adam(self.parameters(), lr=0.001)
+
+        for epoch in range(20):
+            epoch_loss = 0.0
+            for batch in dataloader:
+                x = movedim(batch['x'], 1, 0)  # Transpose batch to (seq_len, batch_size, num_chars)
+                y = batch['label']
+                
+                optimizer.zero_grad()
+                loss = self.get_loss(x, y)
+                loss.backward()
+                optimizer.step()
+                epoch_loss += loss.item()
+            
+            # Calculate average loss and validation accuracy for this epoch
+            epoch_loss /= len(dataloader)
+            validation_accuracy = dataset.get_validation_accuracy()
+            print(f"Epoch {epoch + 1}: Loss = {epoch_loss:.4f}, Validation Accuracy = {validation_accuracy:.2%}")
+            
+            # Early stopping if validation accuracy is high enough
+            if validation_accuracy >= 0.85:
+                print("Target accuracy achieved. Stopping training.")
+                break
 
 def Convolve(input: tensor, weight: tensor):
     """
