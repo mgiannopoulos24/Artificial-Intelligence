@@ -574,8 +574,8 @@ class Attention(Module):
         V = self.v_layer(input)  # (B, T, C)
 
         # Compute (KQ^T) / sqrt(d_k)
-        d_k = self.layer_size
-        scores = torch.matmul(K, Q.transpose(-2, -1)) / torch.sqrt(torch.tensor(d_k, dtype=torch.float32))  # (B, T, T)
+        d_k = torch.tensor(self.layer_size, dtype=torch.float32)
+        scores = torch.matmul(K, Q.transpose(-2, -1)) / torch.sqrt(d_k)  # (B, T, T)
 
         # Apply the causal mask
         scores = scores.masked_fill(self.mask[:, :, :T, :T] == 0, float('-inf'))
