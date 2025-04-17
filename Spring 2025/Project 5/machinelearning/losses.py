@@ -1,5 +1,4 @@
 from torch.nn.functional import mse_loss, cross_entropy
-import torch.nn.functional as F
 
 def regression_loss(y_pred, y):
     """
@@ -47,9 +46,6 @@ def languageid_loss(y_pred, y):
     Returns: a loss node
     """
     "*** YOUR CODE HERE ***"
-    y_true = y.argmax(dim=1)
-    loss = F.cross_entropy(y_pred, y_true)
-    return loss
 
 
 def digitconvolution_Loss(y_pred, y):
@@ -66,4 +62,5 @@ def digitconvolution_Loss(y_pred, y):
     Returns: a loss tensor
     """
     """ YOUR CODE HERE """
+    return cross_entropy(y_pred, y)
     
