@@ -7,6 +7,7 @@ This folder contains the solutions for the Projects 0,1,2,3,4 on the Course CS 1
 [Project 2 - Multi-Agent Search](https://inst.eecs.berkeley.edu/~cs188/sp25/projects/proj2/)<br>
 [Project 3 - Reinforcement Learning](https://inst.eecs.berkeley.edu/~cs188/sp25/projects/proj3/)<br>
 [Project 4 - Ghostbusters](https://inst.eecs.berkeley.edu/~cs188/sp25/projects/proj4/)<br>
+[Project 5 - Machine Learning](https://inst.eecs.berkeley.edu/~cs188/sp25/projects/proj5/)
 
 The scores are:
 - Project 0: 3/3
@@ -14,3 +15,4 @@ The scores are:
 - Project 2: 25/25
 - Project 3: 21/21
 - Project 4: 20/20
+- Project 5: 
