@@ -92,8 +92,9 @@ class RegressionModel(Module):
         # Initialize your model parameters here
         "*** YOUR CODE HERE ***"
         super().__init__()
-        self.linear1 = Linear(1, 16)
-        self.linear2 = Linear(16, 1)
+        self.linear1 = Linear(1, 64)
+        self.linear2 = Linear(64, 64)
+        self.linear3 = Linear(64, 1)
    
 
     def forward(self, x):
@@ -106,9 +107,9 @@ class RegressionModel(Module):
             A node with shape (batch_size x 1) containing predicted y-values
         """
         "*** YOUR CODE HERE ***"
-        hidden = relu(self.linear1(x))
-        output = self.linear2(hidden)
-        return output
+        x = relu(self.linear1(x))
+        x = relu(self.linear2(x))
+        return self.linear3(x)
 
 
 class DigitClassificationModel(Module):
@@ -316,4 +317,23 @@ class Attention(Module):
         B, T, C = input.size()
 
         """YOUR CODE HERE"""
+        # Generate Q, K, and V matrices using the linear layers
+        Q = self.q_layer(input)  # (B, T, C)
+        K = self.k_layer(input)  # (B, T, C)
+        V = self.v_layer(input)  # (B, T, C)
 
+        # Compute (QK^T) / sqrt(d_k)
+        d_k = self.layer_size
+        # Q @ K^T: (B, T, C) @ (B, C, T) -> (B, T, T)
+        scores = matmul(Q, K.transpose(-2, -1)) / (d_k ** 0.5)
+
+        # Apply the causal mask
+        scores = scores.masked_fill(self.mask[:, :, :T, :T] == 0, float('-inf'))
+
+        # Apply softmax along the last dimension
+        attention_weights = softmax(scores, dim=-1)  # (B, T, T)
+
+        # Multiply the attention weights with V
+        output = matmul(attention_weights, V)  # (B, T, C)
+
+        return output

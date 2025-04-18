@@ -62,18 +62,16 @@ def train_regression(model, dataset):
     """
     "*** YOUR CODE HERE ***"
     dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
-    optimizer = optim.Adam(model.parameters(), lr=0.05)  # Use Adam instead of SGD
+    optimizer = optim.Adam(model.parameters(), lr=0.01)
     num_epochs = 5000
     for epoch in range(num_epochs):
         epoch_loss = 0.0
         for batch in dataloader:
             x = batch['x']
             y = batch['label']
-            # Forward pass
             pred = model(x)
             loss = regression_loss(pred, y)
             epoch_loss += loss.item()
-            # Backward pass and update
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
