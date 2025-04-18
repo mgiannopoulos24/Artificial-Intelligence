@@ -104,6 +104,24 @@ def train_languageid(model, dataset):
     """
     model.train()
     "*** YOUR CODE HERE ***"
+    dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    num_epochs = 20
+    for epoch in range(num_epochs):
+        epoch_loss = 0.0
+        for batch in dataloader:
+            x = batch['x']  # (batch_size, L, num_chars)
+            y = batch['label']  # (batch_size, 5)
+            # Move dimensions: (batch_size, L, num_chars) -> (L, batch_size, num_chars)
+            x_moved = movedim(x, 1, 0)
+            optimizer.zero_grad()
+            y_pred = model(x_moved)
+            loss = languageid_loss(y_pred, y)
+            loss.backward()
+            optimizer.step()
+            epoch_loss += loss.item()
+        epoch_loss /= len(dataloader)
+        print(f"Epoch {epoch+1}: Loss = {epoch_loss}")
 
 
 

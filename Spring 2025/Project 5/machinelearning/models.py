@@ -175,6 +175,9 @@ class LanguageIDModel(Module):
         super(LanguageIDModel, self).__init__()
         "*** YOUR CODE HERE ***"
         # Initialize your model parameters here
+        self.hidden_size = 128
+        self.rnn = nn.GRU(self.num_chars, self.hidden_size, batch_first=False)
+        self.output_layer = Linear(self.hidden_size, len(self.languages))
 
 
 
@@ -208,6 +211,10 @@ class LanguageIDModel(Module):
                 (also called logits)
         """
         "*** YOUR CODE HERE ***"
+        output, h_n = self.rnn(xs)  # output: (seq_len, batch_size, hidden_size), h_n: (1, batch_size, hidden_size)
+        last_hidden = h_n[-1]       # (batch_size, hidden_size)
+        logits = self.output_layer(last_hidden)  # (batch_size, 5)
+        return logits
 
 
 

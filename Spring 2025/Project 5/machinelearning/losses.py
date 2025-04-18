@@ -46,6 +46,9 @@ def languageid_loss(y_pred, y):
     Returns: a loss node
     """
     "*** YOUR CODE HERE ***"
+    # Convert one-hot to class indices for cross_entropy
+    target = y.argmax(dim=1)
+    return cross_entropy(y_pred, target)
 
 
 def digitconvolution_Loss(y_pred, y):
