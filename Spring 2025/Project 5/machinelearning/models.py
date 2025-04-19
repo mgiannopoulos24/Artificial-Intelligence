@@ -133,6 +133,9 @@ class DigitClassificationModel(Module):
         input_size = 28 * 28
         output_size = 10
         "*** YOUR CODE HERE ***"
+        self.layer1 = Linear(input_size, 256)
+        self.layer2 = Linear(256, 128)
+        self.output_layer = Linear(128, output_size)
 
 
     def forward(self, x):
@@ -150,7 +153,11 @@ class DigitClassificationModel(Module):
                 (also called logits)
         """
         """ YOUR CODE HERE """
-
+        x = relu(self.layer1(x))
+        x = relu(self.layer2(x))
+        # No activation on the final layer, as required for cross_entropy loss
+        logits = self.output_layer(x)
+        return logits
 
     
 

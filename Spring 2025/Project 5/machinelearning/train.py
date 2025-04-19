@@ -86,6 +86,51 @@ def train_digitclassifier(model, dataset):
     """
     model.train()
     """ YOUR CODE HERE """
+    dataloader = DataLoader(dataset, batch_size=64, shuffle=True) # Use a reasonable batch size
+    optimizer = optim.Adam(model.parameters(), lr=0.001) # Adam optimizer is common
+    num_epochs = 10 # Set a max number of epochs, but we'll stop based on accuracy
+    validation_accuracy_threshold = 0.975 # Stop training when validation accuracy reaches this
+
+    for epoch in range(num_epochs):
+        epoch_loss = 0.0
+        for batch in dataloader:
+            x = batch['x']  # Input features (batch_size x 784)
+            y = batch['label'] # Target labels (batch_size x 10, one-hot)
+
+            # Zero the gradients
+            optimizer.zero_grad()
+
+            # Forward pass
+            y_pred = model(x) # (batch_size x 10) logits
+
+            # Calculate loss
+            loss = digitclassifier_loss(y_pred, y)
+
+            # Backward pass
+            loss.backward()
+
+            # Update weights
+            optimizer.step()
+
+            epoch_loss += loss.item()
+
+        avg_epoch_loss = epoch_loss / len(dataloader)
+
+        # Calculate validation accuracy after each epoch
+        # Ensure the dataset object passed to this function supports this method.
+        # We put the model in eval mode for accuracy calculation and back to train mode after.
+        model.eval()
+        with no_grad():
+            # Removed the argument because of a bug in the autograder
+            validation_accuracy = dataset.get_validation_accuracy()
+        model.train()
+
+        print(f"Epoch {epoch+1}/{num_epochs}: Loss = {avg_epoch_loss:.4f}, Validation Accuracy = {validation_accuracy:.4f}")
+
+        # Check if validation accuracy meets the threshold
+        if validation_accuracy >= validation_accuracy_threshold:
+            print(f"Validation accuracy threshold ({validation_accuracy_threshold}) reached. Stopping training.")
+            break
 
 
 def train_languageid(model, dataset):

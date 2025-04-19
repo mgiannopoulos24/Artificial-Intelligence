@@ -15,4 +15,4 @@ The scores are:
 - Project 2: 25/25
 - Project 3: 21/21
 - Project 4: 20/20
-- Project 5: 
+- Project 5: 27/27 
