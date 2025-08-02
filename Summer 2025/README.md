@@ -7,7 +7,7 @@ This folder contains the solutions for the Project 0 on the Course CS 188 of Ber
 [Project 2 - Multi-Agent Search](https://inst.eecs.berkeley.edu/~cs188/su25/projects/proj2/)<br>
 [Project 3 - Reinforcement Learning](https://inst.eecs.berkeley.edu/~cs188/su25/projects/proj3/)<br>
 [Project 4 - Ghostbusters](https://inst.eecs.berkeley.edu/~cs188/su25/projects/proj4/)<br>
-<!--[Project 5 - Machine Learning](https://inst.eecs.berkeley.edu/~cs188/su25/projects/proj5/)<br> -->
+[Project 5 - Machine Learning](https://inst.eecs.berkeley.edu/~cs188/su25/projects/proj5/)<br>
 
 
 The scores are:
@@ -16,4 +16,4 @@ The scores are:
 - Project 2: 25/25
 - Project 3: 26/25
 - Project 4: 20/20
-<!--- Project 5: 25/25 -->
+- Project 5: 25/25

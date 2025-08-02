@@ -385,7 +385,7 @@ class LanguageIDModel(object):
         """
         "*** YOUR CODE HERE ***"
         # Set a slightly higher threshold to be safe
-        stopping_threshold = 0.90
+        stopping_threshold = 0.84 # You can bump it up to 0.90 for 90% accuracy. The higher you set it, the longer it will take to train.
 
         while True:
             for xs, y in dataset.iterate_once(self.batch_size):
