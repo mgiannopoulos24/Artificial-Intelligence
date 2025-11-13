@@ -1,14 +1,13 @@
 ## Artificial Intelligence
 
-This folder contains the solutions for the Projects 0,1 on the Course CS 188 of Berkeley University as of Fall 2025.
+This folder contains the solutions for Projects 0, 1, 2, 3, 4, and 5 in the Course CS 188 at Berkeley University as of Fall 2025.
 
 [Project 0 - Tutorial](https://inst.eecs.berkeley.edu/~cs188/fa25/projects/proj0/)<br>
 [Project 1 - Search](https://inst.eecs.berkeley.edu/~cs188/fa25/projects/proj1/)<br>
 [Project 2 - Multi-Agent Search](https://inst.eecs.berkeley.edu/~cs188/fa25/projects/proj2/)<br>
 [Project 3 - Reinforcement Learning](https://inst.eecs.berkeley.edu/~cs188/fa25/projects/proj3/)<br>
 [Project 4 - Ghostbusters](https://inst.eecs.berkeley.edu/~cs188/fa25/projects/proj4/)<br>
-<!--[Project 5 - Machine Learning](https://inst.eecs.berkeley.edu/~cs188/sp24/projects/proj5/)<br>
-[Project 6 - Reinforcement Learning](https://inst.eecs.berkeley.edu/~cs188/sp24/projects/proj6/) -->
+[Project 5 - Machine Learning](https://inst.eecs.berkeley.edu/~cs188/fa25/projects/proj5/)<br>
 
 The scores are:
 - Project 0: 3/3
@@ -16,5 +15,4 @@ The scores are:
 - Project 2: 25/25
 - Project 3: 26/25
 - Project 4: 25/25
-<!-- - Project 5: 25/25
-- Project 6: 21/25 -->
+- Project 5: 25/25
